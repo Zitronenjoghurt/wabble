@@ -4,8 +4,13 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+wabble-core = { workspace = true }
+anyhow = { workspace = true }
+bincode = { workspace = true }
 egui = "0.33.0"
 eframe = { version = "0.33.0", default-features = false, features = ["glow", "persistence"] }
+ewebsock = "0.8.0"
+log = "0.4.28"
 serde = { version = "1.0.228", features = ["derive"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]

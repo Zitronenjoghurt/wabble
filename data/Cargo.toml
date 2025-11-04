@@ -8,7 +8,7 @@ default = []
 parse = ["indicatif", "serde", "serde_json", "regex", "thiserror"]
 
 [dependencies]
-wabble-core = { workspace = true, features = ["bincode"] }
+wabble-core = { workspace = true }
 bincode = { workspace = true }
 indicatif = { version = "0.18.2", optional = true }
 serde = { workspace = true, optional = true }
