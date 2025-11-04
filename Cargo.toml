@@ -1,0 +1,10 @@
+[workspace]
+members = ["core", "data"]
+resolver = "3"
+
+[workspace.dependencies]
+wabble-core = { path = "core" }
+bincode = "2.0.1"
+serde = { version = "1.0.228", features = ["derive"] }
+thiserror = "2.0.17"
+zstd = "0.13.3"
