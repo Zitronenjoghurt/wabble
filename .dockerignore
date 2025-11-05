@@ -1,0 +1,5 @@
+.idea/
+app/dist
+data/resources/*kaikki*
+docker/.env.dist
+target/
