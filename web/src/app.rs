@@ -1,63 +1,36 @@
+use crate::views::{View, ViewID};
 use crate::ws::WebsocketClient;
 use eframe::{Frame, Storage};
 use egui::Context;
-use log::{error, info};
-use wabble_core::message::client::ClientMessage;
 
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 pub struct WabbleApp {
+    pub current_view: ViewID,
+    pub views: crate::views::ViewManager,
     #[serde(skip, default)]
-    ws: WebsocketClient,
+    pub ws: WebsocketClient,
 }
 
 impl WabbleApp {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
-        let mut app: WabbleApp = if let Some(storage) = cc.storage {
+        cc.egui_ctx.set_pixels_per_point(1.5);
+        if let Some(storage) = cc.storage {
             eframe::get_value(storage, eframe::APP_KEY).unwrap_or_default()
         } else {
             Default::default()
-        };
+        }
+    }
 
-        app.ws.connect("ws://127.0.0.1:8081").unwrap();
-        app
+    fn update_views(&mut self, ctx: &Context) {
+        let mut views = std::mem::take(&mut self.views);
+        views.update(self, ctx);
+        self.views = views;
     }
 }
 
 impl eframe::App for WabbleApp {
-    fn update(&mut self, ctx: &Context, frame: &mut Frame) {
-        for message in self.ws.receive().unwrap_or_default() {
-            info!("Received message: {:?}", message);
-        }
-
-        egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
-            ui.horizontal(|ui| {
-                ui.label("Wabble");
-
-                ui.separator();
-
-                if ui.button("Hello").clicked() {
-                    let _ = self.ws.send(ClientMessage::Hello);
-                }
-
-                ui.separator();
-
-                if ui.button("Connect").clicked() {
-                    let _ = self.ws.connect("ws://127.0.0.1:8081");
-                }
-
-                if ui.button("Disconnect").clicked() {
-                    self.ws.disconnect();
-                }
-
-                ui.separator();
-
-                if self.ws.is_connected() {
-                    ui.label("Connected");
-                } else {
-                    ui.label("Disconnected");
-                }
-            });
-        });
+    fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
+        self.update_views(ctx);
     }
 
     fn save(&mut self, storage: &mut dyn Storage) {
