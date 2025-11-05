@@ -1,0 +1,79 @@
+use dashmap::{DashMap, DashSet};
+use log::{debug, info};
+use std::collections::HashSet;
+use std::sync::Arc;
+use tokio::sync::mpsc::Sender;
+use uuid::Uuid;
+use wabble_core::message::server::ServerMessage;
+
+#[derive(Default)]
+pub struct ConnectionRegistry {
+    connections: DashMap<Uuid, Sender<ServerMessage>>,
+    user_connections: DashMap<Uuid, HashSet<Uuid>>,
+    connection_user: DashMap<Uuid, Uuid>,
+}
+
+impl ConnectionRegistry {
+    pub fn initialize() -> Arc<Self> {
+        Arc::new(Self::default())
+    }
+
+    pub fn register_connection(&self, connection_id: Uuid, sender: Sender<ServerMessage>) {
+        self.connections.insert(connection_id, sender);
+        info!("Registered connection: '{connection_id}'");
+    }
+
+    pub fn unregister_connection(&self, connection_id: Uuid) {
+        self.connections.remove(&connection_id);
+        if let Some((_, user_id)) = self.connection_user.remove(&connection_id) {
+            self.user_connections
+                .entry(user_id)
+                .and_modify(|connections| {
+                    connections.retain(|id| *id != connection_id);
+                });
+
+            if let Some(entry) = self.user_connections.get(&user_id) {
+                if entry.value().is_empty() {
+                    drop(entry);
+                    self.user_connections.remove(&user_id);
+                }
+            }
+        }
+        info!("Unregistered connection: '{connection_id}'");
+    }
+
+    pub fn register_user(&self, connection_id: Uuid, user_id: Uuid) {
+        if !self.connections.contains_key(&connection_id) {
+            return;
+        }
+
+        self.connection_user.insert(connection_id, user_id);
+        self.user_connections
+            .entry(user_id)
+            .or_insert_with(Vec::new)
+            .insert(connection_id);
+
+        info!("Registered connection '{connection_id}' for user '{user_id}'")
+    }
+
+    pub fn send_to_connection(&self, connection_id: Uuid, message: ServerMessage) {
+        if let Some(sender) = self.connections.get(&connection_id) {
+            if let Err(err) = sender.value().send(message) {
+                log::error!("[{connection_id}] Failed to send message: {err}");
+            }
+        }
+    }
+
+    pub fn send_to_user(&self, user_id: Uuid, message: ServerMessage) {
+        if let Some(connection_ids) = self.user_connections.get(&user_id).map(|e| *e.value()) {
+            if connection_ids.len() == 1 {
+                self.send_to_connection(connection_ids[0], message);
+                return;
+            } else {
+                for connection_id in connection_ids {
+                    self.send_to_connection(connection_id, message.clone());
+                }
+            }
+        }
+    }
+}

@@ -1,6 +1,11 @@
 use bincode::{Decode, Encode};
 
-#[derive(Debug, Encode, Decode)]
+#[derive(Debug, Clone, Encode, Decode)]
 pub enum ServerMessage {
-    Hello,
+    Admin(ServerAdminMessage),
+}
+
+#[derive(Debug, Clone, Encode, Decode)]
+pub enum ServerAdminMessage {
+    InviteCodes(Vec<String>),
 }

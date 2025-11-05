@@ -8,8 +8,11 @@ use std::net::SocketAddr;
 use tokio::net::{TcpListener, TcpStream};
 use tower_http::services::ServeDir;
 
+mod config;
 mod database;
+mod services;
 mod state;
+mod stores;
 mod websocket;
 
 #[tokio::main]
