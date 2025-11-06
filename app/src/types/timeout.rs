@@ -1,12 +1,12 @@
 pub struct Timeout {
-    created: web_time::Instant,
+    expires_at: web_time::Instant,
     duration: web_time::Duration,
 }
 
 impl Timeout {
     pub fn new(duration: web_time::Duration) -> Self {
         Self {
-            created: web_time::Instant::now() - duration,
+            expires_at: web_time::Instant::now(),
             duration,
         }
     }
@@ -16,7 +16,7 @@ impl Timeout {
     }
 
     pub fn reset(&mut self) {
-        self.created = web_time::Instant::now();
+        self.expires_at = web_time::Instant::now() + self.duration;
     }
 
     pub fn is_ongoing(&self) -> bool {
@@ -24,7 +24,7 @@ impl Timeout {
     }
 
     pub fn is_expired(&self) -> bool {
-        if self.created.elapsed() > self.duration {
+        if self.expires_at < web_time::Instant::now() {
             return true;
         }
         false

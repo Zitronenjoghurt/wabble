@@ -32,7 +32,7 @@ impl Default for LoginRegisterState {
 }
 
 fn default_submit_timeout() -> Timeout {
-    Timeout::new(web_time::Duration::from_secs(3))
+    Timeout::new(web_time::Duration::from_secs(2))
 }
 
 pub struct LoginRegister<'a> {
