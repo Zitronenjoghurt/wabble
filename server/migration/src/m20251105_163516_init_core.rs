@@ -14,6 +14,9 @@ impl MigrationTrait for Migration {
                     .col(pk_uuid(User::Id))
                     .col(string(User::Name))
                     .col(string(User::PasswordHash))
+                    .col(big_integer(User::Permissions))
+                    .col(timestamp(User::CreatedAt).default(Expr::current_timestamp()))
+                    .col(timestamp(User::UpdatedAt).default(Expr::current_timestamp()))
                     .to_owned(),
             )
             .await?;
@@ -26,6 +29,7 @@ impl MigrationTrait for Migration {
                     .col(pk_uuid(UserSession::Id))
                     .col(uuid(UserSession::UserId))
                     .col(string(UserSession::TokenHash))
+                    .col(timestamp(UserSession::CreatedAt).default(Expr::current_timestamp()))
                     .col(timestamp(UserSession::ExpiresAt))
                     .foreign_key(
                         ForeignKey::create()
@@ -43,6 +47,7 @@ impl MigrationTrait for Migration {
                     .table(InviteCode::Table)
                     .if_not_exists()
                     .col(pk_uuid(InviteCode::Code))
+                    .col(timestamp(InviteCode::CreatedAt).default(Expr::current_timestamp()))
                     .to_owned(),
             )
             .await?;
@@ -73,6 +78,9 @@ enum User {
     Id,
     Name,
     PasswordHash,
+    Permissions,
+    CreatedAt,
+    UpdatedAt,
 }
 
 #[derive(DeriveIden)]
@@ -81,6 +89,7 @@ enum UserSession {
     Id,
     UserId,
     TokenHash,
+    CreatedAt,
     ExpiresAt,
 }
 
@@ -88,4 +97,5 @@ enum UserSession {
 enum InviteCode {
     Table,
     Code,
+    CreatedAt,
 }

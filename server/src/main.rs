@@ -9,10 +9,12 @@ use tokio::net::{TcpListener, TcpStream};
 use tower_http::services::ServeDir;
 
 mod config;
+mod crypto;
 mod database;
 mod services;
 mod state;
 mod stores;
+mod types;
 mod websocket;
 
 #[tokio::main]

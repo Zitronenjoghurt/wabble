@@ -64,7 +64,14 @@ impl WabbleApp {
         }
     }
 
-    fn handle_message(&mut self, message: ServerMessage) {}
+    fn handle_message(&mut self, message: ServerMessage) {
+        match message {
+            ServerMessage::Error(err) => {
+                self.toasts.error(err.to_string());
+            }
+            _ => {}
+        }
+    }
 }
 
 impl eframe::App for WabbleApp {

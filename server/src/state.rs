@@ -16,7 +16,7 @@ pub struct ServerState {
 impl ServerState {
     pub async fn initialize() -> anyhow::Result<Arc<Self>> {
         let config = Config::load_from_env()?;
-        let db = Database::initialize(&config.db_url).await?;
+        let db = Database::initialize(&config).await?;
         let stores = Stores::initialize(&db);
         let services = Services::initialize(&stores);
         let connections = ConnectionRegistry::initialize();

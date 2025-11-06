@@ -9,7 +9,7 @@ fn main() -> eframe::Result {
     eframe::run_native(
         "Wabble",
         native_options,
-        Box::new(|cc| Ok(Box::new(wabble_web::WabbleApp::new(cc)))),
+        Box::new(|cc| Ok(Box::new(wabble_app::WabbleApp::new(cc)))),
     )
 }
 

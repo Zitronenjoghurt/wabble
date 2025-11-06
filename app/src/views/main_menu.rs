@@ -35,7 +35,7 @@ impl MainMenuView {
             ui.set_max_width(ui.available_width() / 2.0);
             ui.add_space(ui.available_height() / 8.0);
 
-            LoginRegister::new(&mut self.login_register, &mut app.ws).ui(ui);
+            LoginRegister::new(&mut self.login_register, &mut app.ws, &mut app.toasts).ui(ui);
         });
     }
 }

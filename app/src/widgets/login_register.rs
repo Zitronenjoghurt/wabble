@@ -1,7 +1,10 @@
+use crate::systems::toasts::ToastSystem;
 use crate::systems::ws::WebsocketClient;
-use egui::{TextEdit, Widget};
+use crate::types::timeout::Timeout;
+use egui::{Button, TextEdit, Widget};
+use wabble_core::message::client::ClientMessage;
 
-#[derive(Default, serde::Deserialize, serde::Serialize)]
+#[derive(serde::Deserialize, serde::Serialize)]
 pub struct LoginRegisterState {
     is_register: bool,
     username: String,
@@ -11,16 +14,40 @@ pub struct LoginRegisterState {
     confirm_password: String,
     #[serde(skip, default)]
     invite_code: String,
+    #[serde(skip, default = "default_submit_timeout")]
+    submit_timeout: Timeout,
+}
+
+impl Default for LoginRegisterState {
+    fn default() -> Self {
+        Self {
+            is_register: Default::default(),
+            username: Default::default(),
+            password: Default::default(),
+            confirm_password: Default::default(),
+            invite_code: Default::default(),
+            submit_timeout: default_submit_timeout(),
+        }
+    }
+}
+
+fn default_submit_timeout() -> Timeout {
+    Timeout::new(web_time::Duration::from_secs(3))
 }
 
 pub struct LoginRegister<'a> {
     state: &'a mut LoginRegisterState,
     ws: &'a mut WebsocketClient,
+    toasts: &'a mut ToastSystem,
 }
 
 impl<'a> LoginRegister<'a> {
-    pub fn new(state: &'a mut LoginRegisterState, ws: &'a mut WebsocketClient) -> Self {
-        Self { state, ws }
+    pub fn new(
+        state: &'a mut LoginRegisterState,
+        ws: &'a mut WebsocketClient,
+        toasts: &'a mut ToastSystem,
+    ) -> Self {
+        Self { state, ws, toasts }
     }
 
     fn show_login(&mut self, ui: &mut egui::Ui) {
@@ -65,6 +92,18 @@ impl<'a> LoginRegister<'a> {
                 .show(ui);
         });
     }
+
+    fn handle_submit(&mut self) {
+        self.state.submit_timeout.reset();
+        if !self.state.is_register
+            && let Err(err) = self.ws.send(ClientMessage::Login {
+                username: self.state.username.clone(),
+                password: self.state.password.clone(),
+            })
+        {
+            self.toasts.error(err.to_string());
+        }
+    }
 }
 
 impl Widget for LoginRegister<'_> {
@@ -85,7 +124,24 @@ impl Widget for LoginRegister<'_> {
 
             ui.separator();
 
-            if ui.button("Submit").clicked() {}
+            ui.horizontal(|ui| {
+                if self.state.submit_timeout.is_ongoing() {
+                    ui.spinner();
+                };
+
+                let button_response = ui.add_enabled(
+                    self.ws.is_connected() && self.state.submit_timeout.is_expired(),
+                    Button::new("Submit"),
+                );
+
+                if button_response.clicked() {
+                    self.handle_submit();
+                }
+            });
+
+            if !self.ws.is_connected() {
+                ui.small("Server connection required");
+            }
         })
         .response
     }

@@ -5,8 +5,8 @@ pub mod invite_code;
 pub mod user;
 
 pub struct Stores {
-    invite_code: Arc<invite_code::InviteCodeStore>,
-    user: Arc<user::UserStore>,
+    pub invite_code: Arc<invite_code::InviteCodeStore>,
+    pub user: Arc<user::UserStore>,
 }
 
 impl Stores {

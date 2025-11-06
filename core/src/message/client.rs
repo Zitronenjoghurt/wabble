@@ -3,6 +3,7 @@ use bincode::{Decode, Encode};
 #[derive(Debug, PartialEq, Eq, Encode, Decode)]
 pub enum ClientMessage {
     Ping,
+    Login { username: String, password: String },
     Admin(ClientAdminMessage),
 }
 

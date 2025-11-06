@@ -9,6 +9,7 @@ pub struct Model {
     pub id: Uuid,
     pub user_id: Uuid,
     pub token_hash: String,
+    pub created_at: DateTime,
     pub expires_at: DateTime,
 }
 

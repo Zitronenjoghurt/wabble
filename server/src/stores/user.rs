@@ -1,4 +1,7 @@
+use crate::database::entity::user;
 use crate::database::Database;
+use sea_orm::ColumnTrait;
+use sea_orm::{EntityTrait, QueryFilter};
 use std::sync::Arc;
 
 pub struct UserStore {
@@ -8,5 +11,12 @@ pub struct UserStore {
 impl UserStore {
     pub fn initialize(db: &Arc<Database>) -> Arc<Self> {
         Arc::new(Self { db: db.clone() })
+    }
+
+    pub async fn fetch_by_username(&self, username: &str) -> anyhow::Result<Option<user::Model>> {
+        Ok(user::Entity::find()
+            .filter(user::Column::Name.eq(username))
+            .one(self.db.conn())
+            .await?)
     }
 }

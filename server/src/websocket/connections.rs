@@ -1,5 +1,5 @@
-use dashmap::{DashMap, DashSet};
-use log::{debug, info};
+use dashmap::DashMap;
+use log::info;
 use std::collections::HashSet;
 use std::sync::Arc;
 use tokio::sync::mpsc::Sender;
@@ -32,11 +32,11 @@ impl ConnectionRegistry {
                     connections.retain(|id| *id != connection_id);
                 });
 
-            if let Some(entry) = self.user_connections.get(&user_id) {
-                if entry.value().is_empty() {
-                    drop(entry);
-                    self.user_connections.remove(&user_id);
-                }
+            if let Some(entry) = self.user_connections.get(&user_id)
+                && entry.value().is_empty()
+            {
+                drop(entry);
+                self.user_connections.remove(&user_id);
             }
         }
         info!("Unregistered connection: '{connection_id}'");
@@ -50,17 +50,17 @@ impl ConnectionRegistry {
         self.connection_user.insert(connection_id, user_id);
         self.user_connections
             .entry(user_id)
-            .or_insert_with(HashSet::new)
+            .or_default()
             .insert(connection_id);
 
         info!("Registered connection '{connection_id}' for user '{user_id}'")
     }
 
     pub async fn send_to_connection(&self, connection_id: Uuid, message: ServerMessage) {
-        if let Some(sender) = self.connections.get(&connection_id) {
-            if let Err(err) = sender.value().send(message).await {
-                log::error!("[{connection_id}] Failed to send message: {err}");
-            }
+        if let Some(sender) = self.connections.get(&connection_id)
+            && let Err(err) = sender.value().send(message).await
+        {
+            log::error!("[{connection_id}] Failed to send message: {err}");
         }
     }
 
@@ -70,6 +70,14 @@ impl ConnectionRegistry {
                 self.send_to_connection(*connection_id, message.clone())
                     .await;
             }
+        }
+    }
+
+    pub fn has_connection_user(&self, connection_id: Uuid, user_id: Uuid) -> bool {
+        if let Some(users) = self.user_connections.get(&user_id) {
+            users.value().contains(&connection_id)
+        } else {
+            false
         }
     }
 }

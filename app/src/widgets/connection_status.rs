@@ -1,5 +1,5 @@
 use crate::systems::ws::WebsocketClient;
-use egui::{Response, TextEdit, Ui, Widget};
+use egui::{Grid, Response, TextEdit, Ui, Widget};
 
 pub struct ConnectionStatus<'a> {
     ws: &'a mut WebsocketClient,
@@ -33,12 +33,22 @@ impl<'a> ConnectionStatus<'a> {
     }
 
     fn show_connected(&mut self, ui: &mut Ui) {
-        ui.label(format!(
-            "Connected to {}",
-            self.ws.url().unwrap_or("unknown")
-        ));
+        ui.label("Connected");
 
-        ui.label(format!("Ping: {:?}", self.ws.ping()));
+        ui.separator();
+
+        Grid::new("connection_status_grid")
+            .num_columns(2)
+            .striped(true)
+            .show(ui, |ui| {
+                ui.label("Server");
+                ui.label(self.ws.url().unwrap_or("unknown").to_string());
+                ui.end_row();
+
+                ui.label("Ping");
+                ui.label(format!("{:?}", self.ws.ping().unwrap_or_default()));
+                ui.end_row();
+            });
 
         ui.separator();
 
