@@ -1,6 +1,7 @@
 mod app;
+mod systems;
 mod views;
 mod widgets;
-mod ws;
+mod windows;
 
 pub use app::WabbleApp;

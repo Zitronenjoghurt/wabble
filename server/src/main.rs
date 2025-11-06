@@ -23,13 +23,16 @@ async fn main() -> Result<(), Error> {
     let state = ServerState::initialize().await.unwrap();
     info!("Initialized state");
 
-    let app = Router::new()
-        .route("/ws", get(websocket::ws_handler))
-        .fallback_service(ServeDir::new("./static"))
-        .with_state(state);
+    let mut router = Router::new().route("/ws", get(websocket::ws_handler));
+    if !state.config.ws_only {
+        router = router.fallback_service(ServeDir::new("./static"));
+    } else {
+        info!("Running in ws-only mode, skipping static file server");
+    }
 
+    let app = router.with_state(state);
     let addr = SocketAddr::from(([0, 0, 0, 0], 48967));
-    let listener = tokio::net::TcpListener::bind(addr).await?;
+    let listener = TcpListener::bind(addr).await?;
     info!("Listening on: {}", addr);
 
     axum::serve(listener, app).await?;

@@ -1,4 +1,4 @@
-use crate::ws::WebsocketClient;
+use crate::systems::ws::WebsocketClient;
 use egui::{TextEdit, Widget};
 
 #[derive(Default, serde::Deserialize, serde::Serialize)]

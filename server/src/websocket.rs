@@ -83,4 +83,14 @@ async fn handle_receive(id: Uuid, mut ws_receive: SplitStream<WebSocket>, state:
     }
 }
 
-async fn handle_client_message(conn_id: Uuid, message: ClientMessage, state: Arc<ServerState>) {}
+async fn handle_client_message(conn_id: Uuid, message: ClientMessage, state: Arc<ServerState>) {
+    match message {
+        ClientMessage::Ping => {
+            state
+                .connections
+                .send_to_connection(conn_id, ServerMessage::Pong)
+                .await;
+        }
+        _ => {}
+    }
+}

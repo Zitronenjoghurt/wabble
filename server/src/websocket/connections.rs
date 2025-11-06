@@ -50,29 +50,25 @@ impl ConnectionRegistry {
         self.connection_user.insert(connection_id, user_id);
         self.user_connections
             .entry(user_id)
-            .or_insert_with(Vec::new)
+            .or_insert_with(HashSet::new)
             .insert(connection_id);
 
         info!("Registered connection '{connection_id}' for user '{user_id}'")
     }
 
-    pub fn send_to_connection(&self, connection_id: Uuid, message: ServerMessage) {
+    pub async fn send_to_connection(&self, connection_id: Uuid, message: ServerMessage) {
         if let Some(sender) = self.connections.get(&connection_id) {
-            if let Err(err) = sender.value().send(message) {
+            if let Err(err) = sender.value().send(message).await {
                 log::error!("[{connection_id}] Failed to send message: {err}");
             }
         }
     }
 
-    pub fn send_to_user(&self, user_id: Uuid, message: ServerMessage) {
-        if let Some(connection_ids) = self.user_connections.get(&user_id).map(|e| *e.value()) {
-            if connection_ids.len() == 1 {
-                self.send_to_connection(connection_ids[0], message);
-                return;
-            } else {
-                for connection_id in connection_ids {
-                    self.send_to_connection(connection_id, message.clone());
-                }
+    pub async fn send_to_user(&self, user_id: Uuid, message: ServerMessage) {
+        if let Some(entry) = self.user_connections.get(&user_id) {
+            for connection_id in entry.value() {
+                self.send_to_connection(*connection_id, message.clone())
+                    .await;
             }
         }
     }

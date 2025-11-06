@@ -27,26 +27,8 @@ impl Database {
         let db = Self { connection };
         Ok(Arc::new(db))
     }
-}
 
-impl ConnectionTrait for Database {
-    fn get_database_backend(&self) -> DbBackend {
-        self.connection.get_database_backend()
-    }
-
-    async fn execute_raw(&self, stmt: Statement) -> Result<ExecResult, DbErr> {
-        self.connection.execute_raw(stmt).await
-    }
-
-    async fn execute_unprepared(&self, sql: &str) -> Result<ExecResult, DbErr> {
-        self.connection.execute_unprepared(sql).await
-    }
-
-    async fn query_one_raw(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
-        self.connection.query_one_raw(stmt).await
-    }
-
-    async fn query_all_raw(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr> {
-        self.connection.query_all_raw(stmt).await
+    pub fn conn(&self) -> &DatabaseConnection {
+        &self.connection
     }
 }

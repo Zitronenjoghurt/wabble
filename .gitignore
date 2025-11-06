@@ -22,3 +22,4 @@ target
 app/dist
 data/resources/*kaikki*
 docker/.env
+docker/.ws.env

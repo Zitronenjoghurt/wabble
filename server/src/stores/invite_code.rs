@@ -14,10 +14,10 @@ impl InviteCodeStore {
 
     pub async fn create_new(&self) -> anyhow::Result<invite_code::Model> {
         let active_model = invite_code::ActiveModel::new();
-        Ok(active_model.insert(self.db.as_ref()).await?)
+        Ok(active_model.insert(self.db.conn()).await?)
     }
 
     pub async fn find_random(&self) -> anyhow::Result<Option<invite_code::Model>> {
-        Ok(invite_code::Entity::find().one(self.db.as_ref()).await?)
+        Ok(invite_code::Entity::find().one(self.db.conn()).await?)
     }
 }
