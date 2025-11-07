@@ -56,6 +56,12 @@ impl ConnectionRegistry {
         info!("Registered connection '{connection_id}' for user '{user_id}'")
     }
 
+    pub fn get_connection_user(&self, connection_id: Uuid) -> Option<Uuid> {
+        self.connection_user
+            .get(&connection_id)
+            .map(|entry| entry.value().clone())
+    }
+
     pub async fn send_to_connection(&self, connection_id: Uuid, message: ServerMessage) {
         if let Some(sender) = self.connections.get(&connection_id)
             && let Err(err) = sender.value().send(message).await

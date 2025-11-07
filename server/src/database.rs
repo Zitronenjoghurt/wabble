@@ -1,11 +1,11 @@
 use crate::config::Config;
 use crate::crypto::hash_password;
-use crate::types::user_permissions::UserPermissions;
 use anyhow::Context;
 use log::info;
 use migration::{Migrator, MigratorTrait};
 use sea_orm::*;
 use std::sync::Arc;
+use wabble_core::types::user_permissions::UserPermissions;
 
 pub mod entity;
 mod entity_ext;

@@ -1,15 +1,17 @@
 use crate::systems::toasts::ToastSystem;
+use crate::systems::windows::WindowsSystem;
 use crate::systems::ws::{WebsocketClient, WebsocketError};
 use crate::views::{View, ViewID, ViewManager};
 use eframe::epaint::text::FontDefinitions;
 use eframe::{Frame, Storage};
 use egui::Context;
-use wabble_core::message::server::ServerMessage;
+use wabble_core::message::server::{ServerError, ServerMessage};
 
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 pub struct WabbleApp {
     pub current_view: ViewID,
     pub views: ViewManager,
+    pub windows: WindowsSystem,
     #[serde(skip, default)]
     pub toasts: ToastSystem,
     #[serde(skip, default)]
@@ -43,6 +45,10 @@ impl WabbleApp {
         ctx.set_fonts(fonts);
     }
 
+    pub fn switch_view(&mut self, view: ViewID) {
+        self.current_view = view;
+    }
+
     fn update_views(&mut self, ctx: &Context) {
         let mut views = std::mem::take(&mut self.views);
         views.update(self, ctx);
@@ -60,6 +66,7 @@ impl WabbleApp {
                 if !matches!(err, WebsocketError::NotConnected) {
                     self.toasts.error(err.to_string());
                 }
+                self.switch_view(ViewID::Login);
             }
         }
     }
@@ -68,6 +75,13 @@ impl WabbleApp {
         match message {
             ServerMessage::Error(err) => {
                 self.toasts.error(err.to_string());
+                if matches!(err, ServerError::Unauthorized) {
+                    self.switch_view(ViewID::Login);
+                }
+            }
+            ServerMessage::LoginSuccess(_) => {
+                self.toasts.success("Login successful");
+                self.switch_view(ViewID::Main);
             }
             _ => {}
         }

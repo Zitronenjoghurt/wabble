@@ -5,4 +5,5 @@ edition = "2024"
 
 [dependencies]
 bincode = { workspace = true }
+bitflags = "2.10.0"
 thiserror = "2.0.17"

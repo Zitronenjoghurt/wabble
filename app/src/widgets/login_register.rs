@@ -140,7 +140,7 @@ impl Widget for LoginRegister<'_> {
             });
 
             if !self.ws.is_connected() {
-                ui.small("Server connection required");
+                ui.small("Server connection required, configurable via the connection button in the top bar");
             }
         })
         .response

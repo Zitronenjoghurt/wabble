@@ -4746,6 +4746,7 @@ name = "wabble-core"
 version = "0.1.0"
 dependencies = [
  "bincode",
+ "bitflags 2.10.0",
  "thiserror 2.0.17",
 ]
 
@@ -4771,7 +4772,6 @@ dependencies = [
  "argon2",
  "axum",
  "bincode",
- "bitflags 2.10.0",
  "dashmap",
  "env_logger",
  "futures-util",

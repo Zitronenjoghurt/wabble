@@ -4,13 +4,7 @@ use bincode::{Decode, Encode};
 pub enum ClientMessage {
     Ping,
     Login { username: String, password: String },
-    Admin(ClientAdminMessage),
-}
-
-#[derive(Debug, PartialEq, Eq, Encode, Decode)]
-pub struct ClientAdminMessage {
-    token: String,
-    command: ClientAdminCommand,
+    Admin(ClientAdminCommand),
 }
 
 #[derive(Debug, PartialEq, Eq, Encode, Decode)]

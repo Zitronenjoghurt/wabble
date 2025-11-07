@@ -1,8 +1,11 @@
 use anyhow::Context;
 use ewebsock::{WsEvent, WsMessage, WsReceiver, WsSender};
 use wabble_core::message::client::ClientMessage;
-use wabble_core::message::server::ServerMessage;
+use wabble_core::message::server::{ServerAdminMessage, ServerError, ServerMessage};
 use web_time::{Duration, Instant};
+
+mod auth_state;
+mod store;
 
 #[derive(Default)]
 pub struct WebsocketClient {
@@ -13,6 +16,8 @@ pub struct WebsocketClient {
     last_ping: Option<Instant>,
     ping_timer: Option<Instant>,
     ping: Option<Duration>,
+    auth_state: auth_state::AuthState,
+    store: store::WsStore,
 }
 
 impl WebsocketClient {
@@ -34,6 +39,14 @@ impl WebsocketClient {
 
     pub fn ping(&self) -> Option<Duration> {
         self.ping
+    }
+
+    pub fn auth_state(&self) -> &auth_state::AuthState {
+        &self.auth_state
+    }
+
+    pub fn store(&self) -> &store::WsStore {
+        &self.store
     }
 
     pub fn connect(&mut self, url: &str) -> anyhow::Result<()> {
@@ -63,6 +76,8 @@ impl WebsocketClient {
         self.last_ping = None;
         self.ping_timer = None;
         self.ping = None;
+        self.auth_state.clear();
+        self.store.clear();
     }
 
     pub fn send(&mut self, message: ClientMessage) -> WebsocketResult<()> {
@@ -105,10 +120,26 @@ impl WebsocketClient {
                     let (message, _) =
                         bincode::decode_from_slice(&data, bincode::config::standard())?;
 
-                    if ServerMessage::Pong == message
-                        && let Some(ping_timer) = self.ping_timer.take()
-                    {
-                        self.ping = Some(ping_timer.elapsed());
+                    match &message {
+                        ServerMessage::Pong => {
+                            if let Some(ping_timer) = self.ping_timer.take() {
+                                self.ping = Some(ping_timer.elapsed());
+                            }
+                        }
+                        ServerMessage::LoginSuccess(permissions) => {
+                            self.auth_state.set_authenticated(*permissions);
+                        }
+                        ServerMessage::AlreadyLoggedIn(permissions) => {
+                            self.auth_state.set_authenticated(*permissions);
+                        }
+                        ServerMessage::Error(ServerError::Unauthorized) => {
+                            self.clear_connection();
+                            return Err(WebsocketError::NotConnected);
+                        }
+                        ServerMessage::Admin(ServerAdminMessage::InviteCodes(codes)) => {
+                            self.store.invite_codes = codes.clone();
+                        }
+                        _ => {}
                     }
 
                     messages.push(message);

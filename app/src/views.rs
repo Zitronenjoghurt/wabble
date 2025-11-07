@@ -2,12 +2,14 @@ use crate::WabbleApp;
 use egui::Context;
 use serde::{Deserialize, Serialize};
 
-mod main_menu;
+mod login;
+mod main;
 
 #[derive(Debug, Default, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ViewID {
     #[default]
-    MainMenu,
+    Login,
+    Main,
 }
 
 pub trait View {
@@ -16,13 +18,15 @@ pub trait View {
 
 #[derive(Default, Serialize, Deserialize)]
 pub struct ViewManager {
-    main_menu: main_menu::MainMenuView,
+    login: login::LoginView,
+    main: main::MainView,
 }
 
 impl View for ViewManager {
     fn update(&mut self, app: &mut WabbleApp, ctx: &Context) {
         match app.current_view {
-            ViewID::MainMenu => self.main_menu.update(app, ctx),
+            ViewID::Login => self.login.update(app, ctx),
+            ViewID::Main => self.main.update(app, ctx),
         }
     }
 }

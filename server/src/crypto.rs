@@ -21,9 +21,9 @@ pub fn hash_password(password: &Secret) -> CryptoResult<String> {
     Ok(hash.to_string())
 }
 
-pub fn verify_password(password: &Secret, hash: String) -> bool {
+pub fn verify_password(password: &Secret, hash: impl AsRef<str>) -> bool {
     let argon2 = Argon2::default();
-    let Ok(password_hash) = PasswordHash::new(&hash) else {
+    let Ok(password_hash) = PasswordHash::new(hash.as_ref()) else {
         return false;
     };
 

@@ -1,11 +1,12 @@
+use crate::types::user_permissions::UserPermissions;
 use bincode::{Decode, Encode};
 
 #[derive(Debug, Clone, PartialEq, Eq, Encode, Decode)]
 pub enum ServerMessage {
     Pong,
     Error(ServerError),
-    LoginSuccess,
-    AlreadyLoggedIn,
+    LoginSuccess(UserPermissions),
+    AlreadyLoggedIn(UserPermissions),
     Admin(ServerAdminMessage),
 }
 
@@ -16,6 +17,10 @@ pub enum ServerError {
     Database,
     #[error("Invalid credentials")]
     InvalidCredentials,
+    #[error("Forbidden")]
+    Forbidden,
+    #[error("Unauthorized")]
+    Unauthorized,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Encode, Decode)]

@@ -1,19 +1,18 @@
 use crate::views::View;
 use crate::widgets::login_register::{LoginRegister, LoginRegisterState};
-use crate::windows::connection::{ConnectionWindow, ConnectionWindowState};
+use crate::windows::connection::ConnectionWindow;
 use crate::windows::{AppWindow, ToggleableWindow};
 use crate::WabbleApp;
 use egui::{CentralPanel, Context, TopBottomPanel, Widget};
 use serde::{Deserialize, Serialize};
 
 #[derive(Default, Serialize, Deserialize)]
-pub struct MainMenuView {
-    connection_window: ConnectionWindowState,
+pub struct LoginView {
     #[serde(skip, default)]
     login_register: LoginRegisterState,
 }
 
-impl MainMenuView {
+impl LoginView {
     fn show_top_bar(&mut self, app: &mut WabbleApp, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
             ui.label("Wabble");
@@ -24,7 +23,7 @@ impl MainMenuView {
 
             ui.separator();
 
-            ConnectionWindow::new(&mut app.ws, &mut self.connection_window)
+            ConnectionWindow::new(&mut app.ws, &mut app.windows.connection_window)
                 .toggle_button(ui)
                 .show(ui.ctx());
         });
@@ -40,9 +39,9 @@ impl MainMenuView {
     }
 }
 
-impl View for MainMenuView {
+impl View for LoginView {
     fn update(&mut self, app: &mut WabbleApp, ctx: &Context) {
-        TopBottomPanel::top("main_menu_top").show(ctx, |ui| {
+        TopBottomPanel::top("login_view_top").show(ctx, |ui| {
             self.show_top_bar(app, ui);
         });
 
