@@ -1,6 +1,7 @@
 use crate::database::entity::user;
 use crate::database::Database;
 use crate::stores::{StoreError, StoreResult};
+use nanoid::nanoid;
 use sea_orm::{ActiveModelTrait, ColumnTrait, Set};
 use sea_orm::{EntityTrait, QueryFilter};
 use std::sync::Arc;
@@ -30,6 +31,13 @@ impl UserStore {
             .await?)
     }
 
+    pub async fn find_by_friend_code(&self, friend_code: &str) -> StoreResult<Option<user::Model>> {
+        Ok(user::Entity::find()
+            .filter(user::Column::FriendCode.eq(friend_code))
+            .one(self.db.conn())
+            .await?)
+    }
+
     pub async fn create_new(
         &self,
         username: &str,
@@ -47,6 +55,7 @@ impl UserStore {
             name: Set(username.to_ascii_lowercase()),
             password_hash: Set(password_hash.to_string()),
             permissions: Set(UserPermissions::default().bits()),
+            friend_code: Set(nanoid!(12)),
             ..Default::default()
         };
         Ok(new_user.insert(self.db.conn()).await?)

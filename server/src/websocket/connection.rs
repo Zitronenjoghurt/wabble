@@ -10,6 +10,7 @@ use wabble_core::crypto::secret::Secret;
 use wabble_core::crypto::verify_secret;
 use wabble_core::message::client::{ClientAdminCommand, ClientMessage};
 use wabble_core::message::server::{ServerAdminMessage, ServerError, ServerMessage, ServerResult};
+use wabble_core::types::friendship_status::FriendshipStatus;
 use wabble_core::types::user_permissions::UserPermissions;
 
 pub struct WebsocketConnection {
@@ -85,6 +86,9 @@ impl WebsocketConnection {
                 invite_code,
             } => self.handle_register(username, password, invite_code).await,
             ClientMessage::RequestSessionToken => self.handle_request_session_token().await,
+            ClientMessage::SendFriendRequest { friend_code } => {
+                self.handle_send_friend_request(friend_code).await
+            }
             ClientMessage::Admin(admin_command) => self.handle_admin_command(admin_command).await,
         };
 
@@ -188,6 +192,41 @@ impl WebsocketConnection {
             token,
         })
         .await;
+        Ok(())
+    }
+
+    async fn handle_send_friend_request(&self, friend_code: String) -> ServerResult<()> {
+        let user = self.verify_logged_in().await?;
+        let friend = self
+            .state
+            .stores
+            .user
+            .find_by_friend_code(&friend_code)
+            .await?
+            .ok_or(ServerError::FriendCodeInvalid)?;
+
+        if let Some(existing_friendship) = self
+            .state
+            .stores
+            .user_friendship
+            .find_by_user_ids(user.id, friend.id)
+            .await?
+        {
+            return match existing_friendship.status() {
+                FriendshipStatus::PENDING => Err(ServerError::FriendRequestAlreadySent),
+                FriendshipStatus::ACCEPTED => Err(ServerError::FriendRequestAlreadyAccepted),
+                _ => Err(ServerError::FriendRequestBlocked),
+            };
+        }
+
+        self.state
+            .stores
+            .user_friendship
+            .set_status(user.id, friend.id, FriendshipStatus::PENDING)
+            .await?;
+        self.send_to_connection(ServerMessage::FriendRequestSent)
+            .await;
+
         Ok(())
     }
 

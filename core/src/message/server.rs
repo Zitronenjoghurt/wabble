@@ -9,6 +9,7 @@ pub enum ServerMessage {
     Error(ServerError),
     Authenticated(Me),
     SessionToken { id: String, token: Secret },
+    FriendRequestSent,
     Admin(ServerAdminMessage),
 }
 
@@ -23,6 +24,14 @@ pub enum ServerError {
     InvalidInviteCode,
     #[error("Forbidden")]
     Forbidden,
+    #[error("Friend code invalid")]
+    FriendCodeInvalid,
+    #[error("Friend request already accepted")]
+    FriendRequestAlreadyAccepted,
+    #[error("Friend request already sent")]
+    FriendRequestAlreadySent,
+    #[error("Friend request blocked by user")]
+    FriendRequestBlocked,
     #[error("Unauthorized")]
     Unauthorized,
     #[error("Unexpected error")]

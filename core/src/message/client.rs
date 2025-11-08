@@ -18,6 +18,9 @@ pub enum ClientMessage {
         invite_code: String,
     },
     RequestSessionToken,
+    SendFriendRequest {
+        friend_code: String,
+    },
     Admin(ClientAdminCommand),
 }
 

@@ -13,6 +13,8 @@ pub struct Model {
     pub name: String,
     pub password_hash: String,
     pub permissions: i64,
+    #[sea_orm(unique)]
+    pub friend_code: String,
     pub created_at: DateTime,
     pub updated_at: DateTime,
 }

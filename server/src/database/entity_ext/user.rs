@@ -15,6 +15,7 @@ impl entity::user::Model {
         Me {
             username: self.name.clone(),
             permissions: self.permissions(),
+            friend_code: self.friend_code.clone(),
         }
     }
 }

@@ -4,4 +4,5 @@ pub mod prelude;
 
 pub mod invite_code;
 pub mod user;
+pub mod user_friendship;
 pub mod user_session;

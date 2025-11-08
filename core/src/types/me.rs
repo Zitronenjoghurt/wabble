@@ -5,4 +5,5 @@ use bincode::{Decode, Encode};
 pub struct Me {
     pub username: String,
     pub permissions: UserPermissions,
+    pub friend_code: String,
 }

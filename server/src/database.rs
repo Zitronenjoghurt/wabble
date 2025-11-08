@@ -2,6 +2,7 @@ use crate::config::Config;
 use anyhow::Context;
 use log::info;
 use migration::{Migrator, MigratorTrait};
+use nanoid::nanoid;
 use sea_orm::*;
 use std::sync::Arc;
 use wabble_core::crypto::hash_secret;
@@ -60,6 +61,7 @@ impl Database {
             name: Set(config.admin_user.to_string()),
             password_hash: Set(password_hash),
             permissions: Set(UserPermissions::ADMIN.bits()),
+            friend_code: Set(nanoid!(12)),
             ..Default::default()
         };
 

@@ -2,4 +2,5 @@
 
 pub use super::invite_code::Entity as InviteCode;
 pub use super::user::Entity as User;
+pub use super::user_friendship::Entity as UserFriendship;
 pub use super::user_session::Entity as UserSession;

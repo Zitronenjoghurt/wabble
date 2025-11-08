@@ -88,6 +88,9 @@ impl WabbleApp {
                 self.toasts.success("Login successful");
                 self.switch_view(ViewID::Main);
             }
+            ServerMessage::FriendRequestSent => {
+                self.toasts.success("Friend request sent");
+            }
             _ => {}
         }
     }
