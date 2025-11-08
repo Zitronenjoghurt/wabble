@@ -4735,6 +4735,7 @@ dependencies = [
  "egui-phosphor",
  "ewebsock",
  "log",
+ "regex",
  "serde",
  "thiserror 2.0.17",
  "wabble-core",

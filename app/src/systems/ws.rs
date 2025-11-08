@@ -1,4 +1,5 @@
 use crate::systems::ws::remember_me::RememberMe;
+use crate::types::server_url::ServerUrl;
 use anyhow::Context;
 use ewebsock::{WsEvent, WsMessage, WsReceiver, WsSender};
 use serde::{Deserialize, Serialize};
@@ -17,7 +18,8 @@ pub struct WebsocketClient {
     sender: Option<WsSender>,
     #[serde(skip, default)]
     receiver: Option<WsReceiver>,
-    url: Option<String>,
+    #[serde(skip, default)]
+    url: Option<ServerUrl>,
     #[serde(skip, default)]
     is_connected: bool,
     #[serde(skip, default)]
@@ -49,8 +51,8 @@ impl WebsocketClient {
         (self.sender.is_some() || self.receiver.is_some()) && !self.is_connected
     }
 
-    pub fn url(&self) -> Option<&str> {
-        self.url.as_deref()
+    pub fn url(&self) -> Option<&ServerUrl> {
+        self.url.as_ref()
     }
 
     pub fn ping(&self) -> Option<Duration> {
@@ -69,24 +71,25 @@ impl WebsocketClient {
         self.remember_me.as_ref()
     }
 
-    pub fn connect(&mut self, url: &str) -> anyhow::Result<()> {
+    pub fn connect(&mut self, url: &ServerUrl) -> anyhow::Result<()> {
         if self.is_connected {
             return Ok(());
         };
 
-        let (sender, receiver) = ewebsock::connect(url, Default::default())
-            .map_err(anyhow::Error::msg)
-            .context("Failed to connect")?;
+        let (sender, receiver) =
+            ewebsock::connect(url.as_platform_specific_url(), Default::default())
+                .map_err(anyhow::Error::msg)
+                .context("Failed to connect")?;
 
         self.sender = Some(sender);
         self.receiver = Some(receiver);
-        self.url = Some(url.to_string());
+        self.url = Some(url.clone());
         Ok(())
     }
 
     pub fn connect_with_remember_me(&mut self) -> anyhow::Result<()> {
-        if let Some(url) = self.remember_me.as_ref().map(|r| r.url.to_string()) {
-            self.connect(&url)
+        if let Some(remember_me) = self.remember_me.as_ref() {
+            self.connect(&remember_me.url.clone())
         } else {
             Ok(())
         }
@@ -185,11 +188,13 @@ impl WebsocketClient {
                             self.store.invite_codes = codes.clone();
                         }
                         ServerMessage::SessionToken { id, token } => {
-                            self.remember_me = Some(RememberMe {
-                                url: self.url.clone().unwrap(),
-                                id: id.to_string(),
-                                token: token.reveal_str().to_string(),
-                            });
+                            if let Some(server_url) = self.url.as_ref() {
+                                self.remember_me = Some(RememberMe {
+                                    url: server_url.clone(),
+                                    id: id.to_string(),
+                                    token: token.reveal_str().to_string(),
+                                });
+                            }
                         }
                         _ => {}
                     }

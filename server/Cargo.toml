@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 migration = { path = "migration" }
-wabble-core = { workspace = true }
+wabble-core = { workspace = true, features = ["argon2"] }
 anyhow = { workspace = true }
 axum = { version = "0.8.6", features = ["ws"] }
 bincode = { workspace = true }

@@ -1,5 +1,6 @@
 use crate::systems::ws::WebsocketClient;
-use egui::{Grid, Response, TextEdit, Ui, Widget};
+use crate::types::server_url::ServerUrl;
+use egui::{Button, Grid, Response, TextEdit, Ui, Widget};
 
 pub struct ConnectionStatus<'a> {
     ws: &'a mut WebsocketClient,
@@ -20,14 +21,30 @@ impl<'a> ConnectionStatus<'a> {
             .hint_text("Server URL")
             .ui(ui);
 
-        if ui.button("Connect").clicked() {
-            let _ = self.ws.connect(&format!("{}/ws", self.url_buf));
-        }
+        let server_url = ServerUrl::parse(self.url_buf);
 
-        if let Some(remember_me) = self.ws.remember_me()
-            && ui.button(format!("Login at {}", remember_me.url)).clicked()
-        {
-            let _ = self.ws.connect_with_remember_me();
+        ui.horizontal(|ui| {
+            let connect_button = ui.add_enabled(server_url.is_some(), Button::new("Connect"));
+            if connect_button.clicked()
+                && let Some(server_url) = &server_url
+            {
+                let _ = self.ws.connect(server_url);
+            }
+
+            if let Some(remember_me) = self.ws.remember_me()
+                && ui
+                    .button(format!(
+                        "Login at {}",
+                        remember_me.url.as_human_readable_url()
+                    ))
+                    .clicked()
+            {
+                let _ = self.ws.connect_with_remember_me();
+            }
+        });
+
+        if server_url.is_none() {
+            ui.small("Invalid server URL");
         }
     }
 
@@ -48,7 +65,12 @@ impl<'a> ConnectionStatus<'a> {
             .striped(true)
             .show(ui, |ui| {
                 ui.label("Server");
-                ui.label(self.ws.url().unwrap_or("unknown").to_string());
+                ui.label(
+                    self.ws
+                        .url()
+                        .map(|url| url.as_human_readable_url())
+                        .unwrap_or("unknown".to_string()),
+                );
                 ui.end_row();
 
                 ui.label("Ping");

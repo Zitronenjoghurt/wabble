@@ -17,6 +17,7 @@ egui-notify = "0.21.0"
 egui-phosphor = { version = "0.10.0", features = ["regular"] }
 ewebsock = "0.8.0"
 log = "0.4.28"
+regex = "1.12.2"
 serde = { version = "1.0.228", features = ["derive"] }
 thiserror = "2.0.17"
 web-time = "1.1.0"
