@@ -108,13 +108,13 @@ impl WebsocketConnection {
         drop(password);
 
         if self.state.connections.has_connection_user(self.id, user.id) {
-            self.send_to_connection(ServerMessage::AlreadyLoggedIn(user.permissions()))
+            self.send_to_connection(ServerMessage::Authenticated(user.get_me()))
                 .await;
             return Ok(());
         };
 
         self.state.connections.register_user(self.id, user.id);
-        self.send_to_connection(ServerMessage::LoginSuccess(user.permissions()))
+        self.send_to_connection(ServerMessage::Authenticated(user.get_me()))
             .await;
 
         info!(
@@ -148,7 +148,7 @@ impl WebsocketConnection {
             .await?
             .ok_or(ServerError::InvalidCredentials)?;
         self.state.connections.register_user(self.id, user.id);
-        self.send_to_connection(ServerMessage::LoginSuccess(user.permissions()))
+        self.send_to_connection(ServerMessage::Authenticated(user.get_me()))
             .await;
 
         info!(
@@ -172,7 +172,7 @@ impl WebsocketConnection {
             .register_user(username, password, invite_code)
             .await?;
         self.state.connections.register_user(self.id, user.id);
-        self.send_to_connection(ServerMessage::LoginSuccess(user.permissions()))
+        self.send_to_connection(ServerMessage::Authenticated(user.get_me()))
             .await;
 
         info!("[{}] Registered as '{}'", self.id, user.name);

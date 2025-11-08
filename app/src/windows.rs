@@ -3,6 +3,7 @@ use egui::{Context, Id, Ui, Widget, WidgetText};
 
 pub mod admin;
 pub mod connection;
+pub mod profile;
 
 pub trait AppWindow: Sized {
     fn id() -> Id;

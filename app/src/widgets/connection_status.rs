@@ -23,6 +23,12 @@ impl<'a> ConnectionStatus<'a> {
         if ui.button("Connect").clicked() {
             let _ = self.ws.connect(&format!("{}/ws", self.url_buf));
         }
+
+        if let Some(remember_me) = self.ws.remember_me()
+            && ui.button(format!("Login at {}", remember_me.url)).clicked()
+        {
+            let _ = self.ws.connect_with_remember_me();
+        }
     }
 
     fn show_connecting(&mut self, ui: &mut Ui) {

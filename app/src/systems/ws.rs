@@ -65,6 +65,10 @@ impl WebsocketClient {
         &self.store
     }
 
+    pub fn remember_me(&self) -> Option<&RememberMe> {
+        self.remember_me.as_ref()
+    }
+
     pub fn connect(&mut self, url: &str) -> anyhow::Result<()> {
         if self.is_connected {
             return Ok(());
@@ -80,12 +84,17 @@ impl WebsocketClient {
         Ok(())
     }
 
-    pub fn connect_if_remember_me(&mut self) -> anyhow::Result<()> {
+    pub fn connect_with_remember_me(&mut self) -> anyhow::Result<()> {
         if let Some(url) = self.remember_me.as_ref().map(|r| r.url.to_string()) {
             self.connect(&url)
         } else {
             Ok(())
         }
+    }
+
+    pub fn logout(&mut self) {
+        self.disconnect();
+        self.remember_me = None;
     }
 
     pub fn disconnect(&mut self) {
@@ -161,11 +170,8 @@ impl WebsocketClient {
                                 self.ping = Some(ping_timer.elapsed());
                             }
                         }
-                        ServerMessage::LoginSuccess(permissions) => {
-                            self.auth_state.set_authenticated(*permissions);
-                        }
-                        ServerMessage::AlreadyLoggedIn(permissions) => {
-                            self.auth_state.set_authenticated(*permissions);
+                        ServerMessage::Authenticated(me) => {
+                            self.auth_state.set_authenticated(me.clone());
                         }
                         ServerMessage::Error(ServerError::InvalidCredentials) => {
                             self.auth_state.clear();

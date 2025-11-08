@@ -1,13 +1,16 @@
 use crate::views::View;
 use crate::windows::admin::AdminWindow;
 use crate::windows::connection::ConnectionWindow;
+use crate::windows::profile::{ProfileWindow, ProfileWindowState};
 use crate::windows::{AppWindow, ToggleableWindow};
 use crate::WabbleApp;
 use egui::{Context, TopBottomPanel};
 use serde::{Deserialize, Serialize};
 
 #[derive(Default, Serialize, Deserialize)]
-pub struct MainView;
+pub struct MainView {
+    profile_window: ProfileWindowState,
+}
 
 impl MainView {
     fn show_top_bar(&mut self, app: &mut WabbleApp, ui: &mut egui::Ui) {
@@ -19,6 +22,12 @@ impl MainView {
             ConnectionWindow::new(&mut app.ws, &mut app.windows.connection_window)
                 .toggle_button(ui)
                 .show(ui.ctx());
+
+            if app.ws.auth_state().is_authenticated() {
+                ProfileWindow::new(&mut app.ws, &mut self.profile_window)
+                    .toggle_button(ui)
+                    .show(ui.ctx());
+            }
 
             if app.ws.auth_state().has_administration_permissions() {
                 AdminWindow::new(app).toggle_button(ui).show(ui.ctx());

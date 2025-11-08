@@ -28,7 +28,7 @@ impl WabbleApp {
             Default::default()
         };
 
-        let _ = app.ws.connect_if_remember_me();
+        let _ = app.ws.connect_with_remember_me();
         app
     }
 
@@ -84,7 +84,7 @@ impl WabbleApp {
                     _ => {}
                 }
             }
-            ServerMessage::LoginSuccess(_) => {
+            ServerMessage::Authenticated(_) => {
                 self.toasts.success("Login successful");
                 self.switch_view(ViewID::Main);
             }
