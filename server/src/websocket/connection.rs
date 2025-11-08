@@ -205,6 +205,13 @@ impl WebsocketConnection {
             .await?
             .ok_or(ServerError::FriendCodeInvalid)?;
 
+        let id_tuple = self
+            .state
+            .stores
+            .user_friendship
+            .id_tuple(user.id, friend.id);
+        let is_1 = id_tuple.0 == user.id;
+
         if let Some(existing_friendship) = self
             .state
             .stores
@@ -213,16 +220,50 @@ impl WebsocketConnection {
             .await?
         {
             return match existing_friendship.status() {
-                FriendshipStatus::PENDING => Err(ServerError::FriendRequestAlreadySent),
-                FriendshipStatus::ACCEPTED => Err(ServerError::FriendRequestAlreadyAccepted),
+                FriendshipStatus::RequestedFrom1 => {
+                    if is_1 {
+                        Err(ServerError::FriendRequestAlreadySent)
+                    } else {
+                        self.state
+                            .stores
+                            .user_friendship
+                            .set_status(user.id, friend.id, FriendshipStatus::RequestedFromBoth)
+                            .await?;
+                        self.send_to_connection(ServerMessage::FriendRequestSent)
+                            .await;
+                        Ok(())
+                    }
+                }
+                FriendshipStatus::RequestedFrom2 => {
+                    if is_1 {
+                        self.state
+                            .stores
+                            .user_friendship
+                            .set_status(user.id, friend.id, FriendshipStatus::RequestedFromBoth)
+                            .await?;
+                        self.send_to_connection(ServerMessage::FriendRequestSent)
+                            .await;
+                        Ok(())
+                    } else {
+                        Err(ServerError::FriendRequestAlreadySent)
+                    }
+                }
+                FriendshipStatus::RequestedFromBoth => Err(ServerError::FriendRequestAlreadySent),
+                FriendshipStatus::Accepted => Err(ServerError::FriendRequestAlreadyAccepted),
                 _ => Err(ServerError::FriendRequestBlocked),
             };
         }
 
+        let status = if is_1 {
+            FriendshipStatus::RequestedFrom1
+        } else {
+            FriendshipStatus::RequestedFrom2
+        };
+
         self.state
             .stores
             .user_friendship
-            .set_status(user.id, friend.id, FriendshipStatus::PENDING)
+            .set_status(user.id, friend.id, status)
             .await?;
         self.send_to_connection(ServerMessage::FriendRequestSent)
             .await;

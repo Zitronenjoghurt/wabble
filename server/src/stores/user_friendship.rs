@@ -62,7 +62,7 @@ impl UserFriendshipStore {
                     .eq(user_id)
                     .or(user_friendship::Column::User2Id.eq(user_id)),
             )
-            .filter(user_friendship::Column::Status.eq(status.bits()))
+            .filter(user_friendship::Column::Status.eq::<i16>(status.into()))
             .all(self.db.conn())
             .await?)
     }
@@ -75,14 +75,14 @@ impl UserFriendshipStore {
     ) -> StoreResult<()> {
         if let Some(existing_friendship) = self.find_by_user_ids(user_1_id, user_2_id).await? {
             let mut active_model = existing_friendship.into_active_model();
-            active_model.status = Set(status.bits());
+            active_model.status = Set(status.into());
             active_model.update(self.db.conn()).await?;
         } else {
             let id_tuple = self.id_tuple(user_1_id, user_2_id);
             let new_friendship = user_friendship::ActiveModel {
                 user1_id: Set(id_tuple.0),
                 user2_id: Set(id_tuple.1),
-                status: Set(status.bits()),
+                status: Set(status.into()),
                 ..Default::default()
             };
             new_friendship.insert(self.db.conn()).await?;
