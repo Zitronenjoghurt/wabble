@@ -53,8 +53,10 @@ impl Database {
 
         let password_hash =
             hash_password(&config.admin_token).context("Failed to hash admin password")?;
+        let id = uuid::Uuid::new_v4();
         let new_user = entity::user::ActiveModel {
-            id: Set(uuid::Uuid::new_v4()),
+            id: Set(id),
+            invite_code: Set(id),
             name: Set(config.admin_user.to_string()),
             password_hash: Set(password_hash),
             permissions: Set(UserPermissions::ADMIN.bits()),

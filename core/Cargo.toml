@@ -7,3 +7,4 @@ edition = "2024"
 bincode = { workspace = true }
 bitflags = "2.10.0"
 thiserror = "2.0.17"
+uuid = "1.18.1"

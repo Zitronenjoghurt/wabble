@@ -4,7 +4,7 @@ use std::sync::Arc;
 pub mod user;
 
 pub struct Services {
-    user: Arc<user::UserService>,
+    pub user: Arc<user::UserService>,
 }
 
 impl Services {

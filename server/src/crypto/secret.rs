@@ -13,6 +13,10 @@ impl Secret {
     pub fn reveal_bytes(&self) -> &[u8] {
         self.0.as_bytes()
     }
+
+    pub fn reveal_str(&self) -> &str {
+        self.0.as_str()
+    }
 }
 
 impl Debug for Secret {

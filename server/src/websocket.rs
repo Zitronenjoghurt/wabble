@@ -3,13 +3,12 @@ use crate::websocket::connection::WebsocketConnection;
 use axum::extract::ws::{Message, WebSocket};
 use axum::extract::{State, WebSocketUpgrade};
 use axum::response::IntoResponse;
-use futures_util::stream::{SplitSink, SplitStream};
+use futures_util::stream::SplitSink;
 use futures_util::{SinkExt, StreamExt};
 use log::error;
 use std::sync::Arc;
 use tokio::sync::mpsc::Receiver;
 use uuid::Uuid;
-use wabble_core::message::client::ClientMessage;
 use wabble_core::message::server::ServerMessage;
 
 pub mod connection;

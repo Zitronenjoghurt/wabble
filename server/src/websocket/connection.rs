@@ -4,12 +4,13 @@ use crate::state::ServerState;
 use axum::extract::ws::{Message, WebSocket};
 use futures_util::stream::SplitStream;
 use futures_util::StreamExt;
-use log::{error, info};
+use log::{debug, error, info};
 use std::sync::Arc;
 use uuid::Uuid;
 use wabble_core::message::client::{ClientAdminCommand, ClientMessage};
 use wabble_core::message::server::{ServerAdminMessage, ServerError, ServerMessage, ServerResult};
 use wabble_core::types::user_permissions::UserPermissions;
+use wabble_core::validate::{validate_password, validate_username};
 
 pub struct WebsocketConnection {
     id: Uuid,
@@ -79,6 +80,14 @@ impl WebsocketConnection {
             ClientMessage::Login { username, password } => {
                 self.handle_login(username, Secret::new(password)).await
             }
+            ClientMessage::Register {
+                username,
+                password,
+                invite_code,
+            } => {
+                self.handle_register(username, Secret::new(password), invite_code)
+                    .await
+            }
             ClientMessage::Admin(admin_command) => self.handle_admin_command(admin_command).await,
         };
 
@@ -93,8 +102,7 @@ impl WebsocketConnection {
             .stores
             .user
             .fetch_by_username(&username)
-            .await
-            .map_err(|_| ServerError::Database)?
+            .await?
             .ok_or(ServerError::InvalidCredentials)?;
 
         if !verify_password(&password, &user.password_hash) {
@@ -113,6 +121,24 @@ impl WebsocketConnection {
             .await;
         info!("[{}] Logged in as '{}'", self.id, username);
 
+        Ok(())
+    }
+
+    async fn handle_register(
+        &self,
+        username: String,
+        password: Secret,
+        invite_code: String,
+    ) -> ServerResult<()> {
+        let user = self
+            .state
+            .services
+            .user
+            .register_user(username, password, invite_code)
+            .await?;
+        self.state.connections.register_user(self.id, user.id);
+        self.send_to_connection(ServerMessage::LoginSuccess(user.permissions()))
+            .await;
         Ok(())
     }
 

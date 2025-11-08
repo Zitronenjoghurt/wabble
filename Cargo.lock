@@ -4748,6 +4748,7 @@ dependencies = [
  "bincode",
  "bitflags 2.10.0",
  "thiserror 2.0.17",
+ "uuid",
 ]
 
 [[package]]
