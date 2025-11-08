@@ -27,8 +27,7 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(UserSession::Table)
                     .if_not_exists()
-                    .col(pk_uuid(UserSession::Id))
-                    .col(uuid(UserSession::UserId))
+                    .col(pk_uuid(UserSession::UserId))
                     .col(string(UserSession::TokenHash))
                     .col(timestamp(UserSession::CreatedAt).default(Expr::current_timestamp()))
                     .col(timestamp(UserSession::ExpiresAt))
@@ -88,7 +87,6 @@ enum User {
 #[derive(DeriveIden)]
 enum UserSession {
     Table,
-    Id,
     UserId,
     TokenHash,
     CreatedAt,

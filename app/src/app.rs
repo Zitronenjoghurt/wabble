@@ -14,7 +14,6 @@ pub struct WabbleApp {
     pub windows: WindowsSystem,
     #[serde(skip, default)]
     pub toasts: ToastSystem,
-    #[serde(skip, default)]
     pub ws: WebsocketClient,
 }
 
@@ -23,11 +22,14 @@ impl WabbleApp {
         cc.egui_ctx.set_pixels_per_point(1.5);
         Self::setup_fonts(&cc.egui_ctx);
 
-        if let Some(storage) = cc.storage {
+        let mut app: WabbleApp = if let Some(storage) = cc.storage {
             eframe::get_value(storage, eframe::APP_KEY).unwrap_or_default()
         } else {
             Default::default()
-        }
+        };
+
+        let _ = app.ws.connect_if_remember_me();
+        app
     }
 
     fn setup_fonts(ctx: &Context) {
@@ -75,8 +77,11 @@ impl WabbleApp {
         match message {
             ServerMessage::Error(err) => {
                 self.toasts.error(err.to_string());
-                if matches!(err, ServerError::Unauthorized) {
-                    self.switch_view(ViewID::Login);
+                match err {
+                    ServerError::Unauthorized | ServerError::InvalidCredentials => {
+                        self.switch_view(ViewID::Login);
+                    }
+                    _ => {}
                 }
             }
             ServerMessage::LoginSuccess(_) => {

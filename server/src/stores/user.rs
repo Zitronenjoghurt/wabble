@@ -16,14 +16,14 @@ impl UserStore {
         Arc::new(Self { db: db.clone() })
     }
 
-    pub async fn fetch_by_id(&self, id: Uuid) -> StoreResult<Option<user::Model>> {
+    pub async fn find_by_id(&self, id: Uuid) -> StoreResult<Option<user::Model>> {
         Ok(user::Entity::find()
             .filter(user::Column::Id.eq(id))
             .one(self.db.conn())
             .await?)
     }
 
-    pub async fn fetch_by_username(&self, username: &str) -> StoreResult<Option<user::Model>> {
+    pub async fn find_by_username(&self, username: &str) -> StoreResult<Option<user::Model>> {
         Ok(user::Entity::find()
             .filter(user::Column::Name.eq(username.to_ascii_lowercase()))
             .one(self.db.conn())
@@ -36,7 +36,7 @@ impl UserStore {
         password_hash: &str,
         invite_code: &Uuid,
     ) -> StoreResult<user::Model> {
-        let existing_user = self.fetch_by_username(username).await?;
+        let existing_user = self.find_by_username(username).await?;
         if existing_user.is_some() {
             return Err(StoreError::UserAlreadyExists);
         }

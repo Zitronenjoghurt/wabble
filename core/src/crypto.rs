@@ -1,9 +1,9 @@
 use crate::crypto::secret::Secret;
-use argon2::password_hash::rand_core::OsRng;
+use crate::message::server::ServerError;
+use argon2::password_hash::rand_core::{OsRng, RngCore};
 use argon2::password_hash::SaltString;
 use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
-use log::error;
-use wabble_core::message::server::ServerError;
+use tracing::error;
 
 pub mod secret;
 
@@ -25,7 +25,13 @@ impl From<CryptoError> for ServerError {
     }
 }
 
-pub fn hash_password(password: &Secret) -> CryptoResult<String> {
+pub fn generate_secret() -> Secret {
+    let mut bytes = [0u8; 32];
+    OsRng.fill_bytes(&mut bytes);
+    Secret::new(hex::encode(bytes))
+}
+
+pub fn hash_secret(password: &Secret) -> CryptoResult<String> {
     let argon2 = Argon2::default();
     let salt = SaltString::generate(&mut OsRng);
     let hash = argon2
@@ -34,7 +40,7 @@ pub fn hash_password(password: &Secret) -> CryptoResult<String> {
     Ok(hash.to_string())
 }
 
-pub fn verify_password(password: &Secret, hash: impl AsRef<str>) -> bool {
+pub fn verify_secret(password: &Secret, hash: impl AsRef<str>) -> bool {
     let argon2 = Argon2::default();
     let Ok(password_hash) = PasswordHash::new(hash.as_ref()) else {
         return false;

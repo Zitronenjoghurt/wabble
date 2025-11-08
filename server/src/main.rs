@@ -1,15 +1,14 @@
 use crate::state::ServerState;
 use axum::routing::get;
 use axum::Router;
-use futures_util::{future, StreamExt, TryStreamExt};
+use futures_util::TryStreamExt;
 use log::info;
 use std::io::Error;
 use std::net::SocketAddr;
-use tokio::net::{TcpListener, TcpStream};
+use tokio::net::TcpListener;
 use tower_http::services::ServeDir;
 
 mod config;
-mod crypto;
 mod database;
 mod services;
 mod state;

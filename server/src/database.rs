@@ -1,10 +1,10 @@
 use crate::config::Config;
-use crate::crypto::hash_password;
 use anyhow::Context;
 use log::info;
 use migration::{Migrator, MigratorTrait};
 use sea_orm::*;
 use std::sync::Arc;
+use wabble_core::crypto::hash_secret;
 use wabble_core::types::user_permissions::UserPermissions;
 
 pub mod entity;
@@ -52,7 +52,7 @@ impl Database {
         };
 
         let password_hash =
-            hash_password(&config.admin_token).context("Failed to hash admin password")?;
+            hash_secret(&config.admin_token).context("Failed to hash admin password")?;
         let id = uuid::Uuid::new_v4();
         let new_user = entity::user::ActiveModel {
             id: Set(id),

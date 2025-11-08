@@ -1,7 +1,8 @@
 use crate::systems::toasts::ToastSystem;
 use crate::systems::ws::WebsocketClient;
 use crate::types::timeout::Timeout;
-use egui::{Button, TextEdit, Widget};
+use egui::{Button, TextBuffer, TextEdit, Widget};
+use wabble_core::crypto::secret::Secret;
 use wabble_core::message::client::ClientMessage;
 use wabble_core::validate::{validate_invite_code, validate_password, validate_username};
 
@@ -15,6 +16,8 @@ pub struct LoginRegisterState {
     confirm_password: String,
     #[serde(skip, default)]
     invite_code: String,
+    #[serde(skip, default)]
+    remember_me: bool,
     #[serde(skip, default = "default_submit_timeout")]
     submit_timeout: Timeout,
 }
@@ -28,6 +31,7 @@ impl Default for LoginRegisterState {
             confirm_password: Default::default(),
             invite_code: Default::default(),
             submit_timeout: default_submit_timeout(),
+            remember_me: false,
         }
     }
 }
@@ -134,21 +138,28 @@ impl<'a> LoginRegister<'a> {
     fn handle_submit(&mut self) {
         self.state.submit_timeout.reset();
 
+        let password = Secret::new(self.state.password.take());
+        self.state.confirm_password.clear();
         let result = if self.state.is_register {
             self.ws.send(ClientMessage::Register {
                 username: self.state.username.clone(),
-                password: self.state.password.clone(),
+                password,
                 invite_code: self.state.invite_code.clone(),
             })
         } else {
             self.ws.send(ClientMessage::Login {
                 username: self.state.username.clone(),
-                password: self.state.password.clone(),
+                password,
             })
         };
 
         match result {
-            Ok(_) => self.clear_input(),
+            Ok(_) => {
+                self.clear_input();
+                if self.state.remember_me {
+                    let _ = self.ws.send(ClientMessage::RequestSessionToken);
+                }
+            }
             Err(err) => self.toasts.error(err.to_string()),
         }
     }
@@ -169,6 +180,8 @@ impl Widget for LoginRegister<'_> {
             } else {
                 self.show_login(ui);
             }
+
+            ui.checkbox(&mut self.state.remember_me, "Remember me");
 
             ui.separator();
 

@@ -1,9 +1,9 @@
-use crate::crypto::hash_password;
-use crate::crypto::secret::Secret;
 use crate::database::entity::user;
 use crate::stores::Stores;
 use std::sync::Arc;
 use uuid::Uuid;
+use wabble_core::crypto::secret::Secret;
+use wabble_core::crypto::{generate_secret, hash_secret};
 use wabble_core::message::server::{ServerError, ServerResult};
 use wabble_core::validate::{validate_password, validate_username};
 
@@ -27,7 +27,7 @@ impl UserService {
         validate_username(&username)?;
         validate_password(password.reveal_str())?;
 
-        let password_hash = hash_password(&password)?;
+        let password_hash = hash_secret(&password)?;
         drop(password);
 
         let code_uuid =
@@ -44,5 +44,16 @@ impl UserService {
         self.stores.invite_code.delete(invite_code).await?;
 
         Ok(new_user)
+    }
+
+    pub async fn get_session_token(&self, user: &user::Model) -> ServerResult<Secret> {
+        let token = generate_secret();
+        let token_hash = hash_secret(&token)?;
+        let expires_at = (chrono::Utc::now() + chrono::Duration::days(7)).naive_utc();
+        self.stores
+            .user_session
+            .create_new(user.id, token_hash, expires_at)
+            .await?;
+        Ok(token)
     }
 }

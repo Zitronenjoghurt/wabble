@@ -1,16 +1,16 @@
-use crate::crypto::secret::Secret;
-use crate::crypto::verify_password;
+use crate::database::entity::user;
 use crate::state::ServerState;
 use axum::extract::ws::{Message, WebSocket};
 use futures_util::stream::SplitStream;
 use futures_util::StreamExt;
-use log::{debug, error, info};
+use log::{error, info};
 use std::sync::Arc;
 use uuid::Uuid;
+use wabble_core::crypto::secret::Secret;
+use wabble_core::crypto::verify_secret;
 use wabble_core::message::client::{ClientAdminCommand, ClientMessage};
 use wabble_core::message::server::{ServerAdminMessage, ServerError, ServerMessage, ServerResult};
 use wabble_core::types::user_permissions::UserPermissions;
-use wabble_core::validate::{validate_password, validate_username};
 
 pub struct WebsocketConnection {
     id: Uuid,
@@ -48,22 +48,20 @@ impl WebsocketConnection {
             .await;
     }
 
-    async fn verify_permissions(&self, permissions: UserPermissions) -> ServerResult<()> {
+    async fn verify_logged_in(&self) -> ServerResult<user::Model> {
         let Some(user_id) = self.state.connections.get_connection_user(self.id) else {
             return Err(ServerError::Unauthorized);
         };
 
-        let Some(user) = self
-            .state
-            .stores
-            .user
-            .fetch_by_id(user_id)
-            .await
-            .map_err(|_| ServerError::Database)?
-        else {
-            return Err(ServerError::Forbidden);
+        let Some(user) = self.state.stores.user.find_by_id(user_id).await? else {
+            return Err(ServerError::Unauthorized);
         };
 
+        Ok(user)
+    }
+
+    async fn verify_permissions(&self, permissions: UserPermissions) -> ServerResult<()> {
+        let user = self.verify_logged_in().await?;
         if !user.has_permissions(permissions) {
             return Err(ServerError::Forbidden);
         };
@@ -78,16 +76,15 @@ impl WebsocketConnection {
                 Ok(())
             }
             ClientMessage::Login { username, password } => {
-                self.handle_login(username, Secret::new(password)).await
+                self.handle_login(username, password).await
             }
+            ClientMessage::LoginSession { id, token } => self.handle_login_session(id, token).await,
             ClientMessage::Register {
                 username,
                 password,
                 invite_code,
-            } => {
-                self.handle_register(username, Secret::new(password), invite_code)
-                    .await
-            }
+            } => self.handle_register(username, password, invite_code).await,
+            ClientMessage::RequestSessionToken => self.handle_request_session_token().await,
             ClientMessage::Admin(admin_command) => self.handle_admin_command(admin_command).await,
         };
 
@@ -101,11 +98,11 @@ impl WebsocketConnection {
             .state
             .stores
             .user
-            .fetch_by_username(&username)
+            .find_by_username(&username)
             .await?
             .ok_or(ServerError::InvalidCredentials)?;
 
-        if !verify_password(&password, &user.password_hash) {
+        if !verify_secret(&password, &user.password_hash) {
             return Err(ServerError::InvalidCredentials);
         };
         drop(password);
@@ -119,7 +116,45 @@ impl WebsocketConnection {
         self.state.connections.register_user(self.id, user.id);
         self.send_to_connection(ServerMessage::LoginSuccess(user.permissions()))
             .await;
-        info!("[{}] Logged in as '{}'", self.id, username);
+
+        info!(
+            "[{}] Logged in as '{}' via regular login",
+            self.id, username
+        );
+
+        Ok(())
+    }
+
+    async fn handle_login_session(&self, id: String, token: Secret) -> ServerResult<()> {
+        let user_id = Uuid::parse_str(&id).map_err(|_| ServerError::InvalidCredentials)?;
+        let session = self
+            .state
+            .stores
+            .user_session
+            .find(user_id)
+            .await?
+            .ok_or(ServerError::InvalidCredentials)?;
+
+        if !verify_secret(&token, &session.token_hash) {
+            return Err(ServerError::InvalidCredentials);
+        };
+        drop(token);
+
+        let user = self
+            .state
+            .stores
+            .user
+            .find_by_id(user_id)
+            .await?
+            .ok_or(ServerError::InvalidCredentials)?;
+        self.state.connections.register_user(self.id, user.id);
+        self.send_to_connection(ServerMessage::LoginSuccess(user.permissions()))
+            .await;
+
+        info!(
+            "[{}] Logged in as '{}' via session token",
+            self.id, user.name
+        );
 
         Ok(())
     }
@@ -139,6 +174,20 @@ impl WebsocketConnection {
         self.state.connections.register_user(self.id, user.id);
         self.send_to_connection(ServerMessage::LoginSuccess(user.permissions()))
             .await;
+
+        info!("[{}] Registered as '{}'", self.id, user.name);
+
+        Ok(())
+    }
+
+    async fn handle_request_session_token(&self) -> ServerResult<()> {
+        let user = self.verify_logged_in().await?;
+        let token = self.state.services.user.get_session_token(&user).await?;
+        self.send_to_connection(ServerMessage::SessionToken {
+            id: user.id.to_string(),
+            token,
+        })
+        .await;
         Ok(())
     }
 

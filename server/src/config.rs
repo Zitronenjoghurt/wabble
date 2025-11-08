@@ -1,6 +1,6 @@
-use crate::crypto::secret::Secret;
 use anyhow::Context;
 use std::sync::Arc;
+use wabble_core::crypto::secret::Secret;
 
 pub struct Config {
     pub admin_user: String,

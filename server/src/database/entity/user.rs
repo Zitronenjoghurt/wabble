@@ -7,7 +7,9 @@ use sea_orm::entity::prelude::*;
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id: Uuid,
+    #[sea_orm(unique)]
     pub invite_code: Uuid,
+    #[sea_orm(unique)]
     pub name: String,
     pub password_hash: String,
     pub permissions: i64,
@@ -17,7 +19,7 @@ pub struct Model {
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
-    #[sea_orm(has_many = "super::user_session::Entity")]
+    #[sea_orm(has_one = "super::user_session::Entity")]
     UserSession,
 }
 

@@ -1,3 +1,4 @@
+use crate::crypto::secret::Secret;
 use crate::types::user_permissions::UserPermissions;
 use crate::validate::ValidationError;
 use bincode::{Decode, Encode};
@@ -8,6 +9,7 @@ pub enum ServerMessage {
     Error(ServerError),
     LoginSuccess(UserPermissions),
     AlreadyLoggedIn(UserPermissions),
+    SessionToken { id: String, token: Secret },
     Admin(ServerAdminMessage),
 }
 

@@ -1,23 +1,39 @@
+use crate::systems::ws::remember_me::RememberMe;
 use anyhow::Context;
 use ewebsock::{WsEvent, WsMessage, WsReceiver, WsSender};
+use serde::{Deserialize, Serialize};
+use wabble_core::crypto::secret::Secret;
 use wabble_core::message::client::ClientMessage;
 use wabble_core::message::server::{ServerAdminMessage, ServerError, ServerMessage};
 use web_time::{Duration, Instant};
 
 mod auth_state;
+mod remember_me;
 mod store;
 
-#[derive(Default)]
+#[derive(Default, Serialize, Deserialize)]
 pub struct WebsocketClient {
+    #[serde(skip, default)]
     sender: Option<WsSender>,
+    #[serde(skip, default)]
     receiver: Option<WsReceiver>,
     url: Option<String>,
+    #[serde(skip, default)]
     is_connected: bool,
+    #[serde(skip, default)]
+    just_connected: bool,
+    #[serde(skip, default)]
     last_ping: Option<Instant>,
+    #[serde(skip, default)]
     ping_timer: Option<Instant>,
+    #[serde(skip, default)]
     ping: Option<Duration>,
+    #[serde(skip, default)]
     auth_state: auth_state::AuthState,
+    #[serde(skip, default)]
     store: store::WsStore,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    remember_me: Option<RememberMe>,
 }
 
 impl WebsocketClient {
@@ -64,6 +80,14 @@ impl WebsocketClient {
         Ok(())
     }
 
+    pub fn connect_if_remember_me(&mut self) -> anyhow::Result<()> {
+        if let Some(url) = self.remember_me.as_ref().map(|r| r.url.to_string()) {
+            self.connect(&url)
+        } else {
+            Ok(())
+        }
+    }
+
     pub fn disconnect(&mut self) {
         self.clear_connection();
     }
@@ -106,6 +130,16 @@ impl WebsocketClient {
             self.last_ping = Some(Instant::now());
         }
 
+        if self.just_connected {
+            self.just_connected = false;
+            if let Some(remember_me) = &self.remember_me {
+                self.send(ClientMessage::LoginSession {
+                    id: remember_me.id.to_string(),
+                    token: Secret::new(remember_me.token.to_string()),
+                })?;
+            }
+        }
+
         let Some(receiver) = &mut self.receiver else {
             return Err(WebsocketError::NotConnected);
         };
@@ -115,6 +149,7 @@ impl WebsocketClient {
             match event {
                 WsEvent::Opened => {
                     self.is_connected = true;
+                    self.just_connected = true;
                 }
                 WsEvent::Message(WsMessage::Binary(data)) => {
                     let (message, _) =
@@ -132,12 +167,23 @@ impl WebsocketClient {
                         ServerMessage::AlreadyLoggedIn(permissions) => {
                             self.auth_state.set_authenticated(*permissions);
                         }
+                        ServerMessage::Error(ServerError::InvalidCredentials) => {
+                            self.auth_state.clear();
+                            self.remember_me = None;
+                        }
                         ServerMessage::Error(ServerError::Unauthorized) => {
                             self.clear_connection();
                             return Err(WebsocketError::NotConnected);
                         }
                         ServerMessage::Admin(ServerAdminMessage::InviteCodes(codes)) => {
                             self.store.invite_codes = codes.clone();
+                        }
+                        ServerMessage::SessionToken { id, token } => {
+                            self.remember_me = Some(RememberMe {
+                                url: self.url.clone().unwrap(),
+                                id: id.to_string(),
+                                token: token.reveal_str().to_string(),
+                            });
                         }
                         _ => {}
                     }
