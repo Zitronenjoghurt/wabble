@@ -43,7 +43,7 @@ impl AppWindow for ProfileWindow<'_> {
 }
 
 impl ToggleableWindow for ProfileWindow<'_> {
-    fn toggle_label(&self) -> &'static str {
-        regular::USER_CIRCLE
+    fn toggle_label(&self) -> String {
+        regular::USER_CIRCLE.to_string()
     }
 }

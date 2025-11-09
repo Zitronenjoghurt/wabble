@@ -58,7 +58,7 @@ impl WabbleApp {
     }
 
     fn update_ws(&mut self) {
-        match self.ws.receive() {
+        match self.ws.update() {
             Ok(messages) => {
                 for message in messages {
                     self.handle_message(message);
@@ -90,6 +90,23 @@ impl WabbleApp {
             }
             ServerMessage::FriendRequestSent => {
                 self.toasts.success("Friend request sent");
+            }
+            ServerMessage::FriendRequestAccepted => {
+                self.ws.update_friends();
+                self.toasts.success("Friend request accepted");
+            }
+            ServerMessage::FriendRequestWasAccepted(info) => {
+                self.ws.update_friends();
+                self.toasts
+                    .info(format!("Friend request was accepted by {}", info.user_name));
+            }
+            ServerMessage::FriendRequestBlocked => {
+                self.toasts.success("Friend request blocked");
+            }
+            ServerMessage::FriendRequestReceived(info) => {
+                self.ws.update_friend_requests();
+                self.toasts
+                    .info(format!("Friend request received from {}", info.user_name));
             }
             _ => {}
         }

@@ -1,4 +1,6 @@
 use crate::crypto::secret::Secret;
+use crate::types::friend_info::FriendInfo;
+use crate::types::friend_request_info::FriendRequestInfo;
 use crate::types::me::Me;
 use crate::validate::ValidationError;
 use bincode::{Decode, Encode};
@@ -10,6 +12,12 @@ pub enum ServerMessage {
     Authenticated(Me),
     SessionToken { id: String, token: Secret },
     FriendRequestSent,
+    FriendRequestAccepted,
+    FriendRequestBlocked,
+    FriendRequestReceived(FriendRequestInfo),
+    FriendRequestWasAccepted(FriendInfo),
+    FriendRequests(Vec<FriendRequestInfo>),
+    Friends(Vec<FriendInfo>),
     Admin(ServerAdminMessage),
 }
 
@@ -32,6 +40,10 @@ pub enum ServerError {
     FriendRequestAlreadySent,
     #[error("Friend request blocked by user")]
     FriendRequestBlocked,
+    #[error("No friend request")]
+    NoFriendRequest,
+    #[error("Session invalid")]
+    SessionInvalid,
     #[error("Unauthorized")]
     Unauthorized,
     #[error("Unexpected error")]

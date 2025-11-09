@@ -21,6 +21,14 @@ pub enum ClientMessage {
     SendFriendRequest {
         friend_code: String,
     },
+    AcceptFriendRequest {
+        user_id: String,
+    },
+    BlockFriendRequest {
+        user_id: String,
+    },
+    RetrieveFriendRequests,
+    RetrieveFriends,
     Admin(ClientAdminCommand),
 }
 

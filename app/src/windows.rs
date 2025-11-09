@@ -3,6 +3,7 @@ use egui::{Context, Id, Ui, Widget, WidgetText};
 
 pub mod admin;
 pub mod connection;
+pub mod friend_requests;
 pub mod profile;
 pub mod send_friend_request;
 
@@ -36,16 +37,16 @@ pub trait AppWindow: Sized {
             .movable(self.movable())
             .collapsible(self.collapsible())
             .show(ctx, |ui| self.render_content(ui));
-        self.set_open(is_open);
+        self.set_open(is_open && self.is_open());
     }
 }
 
 pub trait ToggleableWindow: AppWindow {
-    fn toggle_label(&self) -> &'static str;
+    fn toggle_label(&self) -> String;
 
     fn toggle_button(mut self, ui: &mut Ui) -> Self {
         let mut is_open = self.is_open();
-        ToggleButton::new(&mut is_open, self.toggle_label()).ui(ui);
+        ToggleButton::new(&mut is_open, &self.toggle_label()).ui(ui);
         self.set_open(is_open);
         self
     }

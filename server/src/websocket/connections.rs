@@ -59,7 +59,7 @@ impl ConnectionRegistry {
     pub fn get_connection_user(&self, connection_id: Uuid) -> Option<Uuid> {
         self.connection_user
             .get(&connection_id)
-            .map(|entry| entry.value().clone())
+            .map(|entry| *entry.value())
     }
 
     pub async fn send_to_connection(&self, connection_id: Uuid, message: ServerMessage) {
@@ -85,5 +85,9 @@ impl ConnectionRegistry {
         } else {
             false
         }
+    }
+
+    pub fn is_online(&self, user_id: Uuid) -> bool {
+        self.user_connections.contains_key(&user_id)
     }
 }

@@ -1,5 +1,8 @@
 pub mod board;
 pub mod connection_status;
+pub mod friend;
+pub mod friend_list;
+pub mod friend_request;
 pub mod login_register;
 pub mod profile;
 pub mod simple_list;

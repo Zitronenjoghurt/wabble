@@ -1,11 +1,13 @@
 use crate::views::View;
+use crate::widgets::friend_list::FriendList;
 use crate::windows::admin::AdminWindow;
 use crate::windows::connection::ConnectionWindow;
+use crate::windows::friend_requests::FriendRequestsWindow;
 use crate::windows::profile::{ProfileWindow, ProfileWindowState};
 use crate::windows::send_friend_request::SendFriendRequestWindow;
 use crate::windows::{AppWindow, ToggleableWindow};
 use crate::WabbleApp;
-use egui::{Context, SidePanel, TopBottomPanel};
+use egui::{Context, SidePanel, TopBottomPanel, Widget};
 use egui_phosphor::regular;
 use serde::{Deserialize, Serialize};
 
@@ -65,9 +67,15 @@ impl MainView {
             SendFriendRequestWindow::new(&mut app.ws, &mut app.windows.send_friend_request_window)
                 .toggle_button(ui)
                 .show(ui.ctx());
+
+            FriendRequestsWindow::new(&mut app.ws, &mut app.windows.friend_requests_window)
+                .toggle_button(ui)
+                .show(ui.ctx());
         });
 
         ui.separator();
+
+        FriendList::new(&app.ws.store().friends).ui(ui);
     }
 }
 

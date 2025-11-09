@@ -44,11 +44,12 @@ impl AppWindow for ConnectionWindow<'_> {
 }
 
 impl ToggleableWindow for ConnectionWindow<'_> {
-    fn toggle_label(&self) -> &'static str {
+    fn toggle_label(&self) -> String {
         if self.ws.is_connected() {
             regular::CELL_SIGNAL_FULL
         } else {
             regular::CELL_SIGNAL_X
         }
+        .to_string()
     }
 }

@@ -10,6 +10,8 @@ use wabble_core::crypto::secret::Secret;
 use wabble_core::crypto::verify_secret;
 use wabble_core::message::client::{ClientAdminCommand, ClientMessage};
 use wabble_core::message::server::{ServerAdminMessage, ServerError, ServerMessage, ServerResult};
+use wabble_core::types::friend_info::FriendInfo;
+use wabble_core::types::friend_request_info::FriendRequestInfo;
 use wabble_core::types::friendship_status::FriendshipStatus;
 use wabble_core::types::user_permissions::UserPermissions;
 
@@ -47,6 +49,10 @@ impl WebsocketConnection {
             .connections
             .send_to_connection(self.id, message)
             .await;
+    }
+
+    async fn send_to_user(&self, user_id: Uuid, message: ServerMessage) {
+        self.state.connections.send_to_user(user_id, message).await;
     }
 
     async fn verify_logged_in(&self) -> ServerResult<user::Model> {
@@ -89,6 +95,14 @@ impl WebsocketConnection {
             ClientMessage::SendFriendRequest { friend_code } => {
                 self.handle_send_friend_request(friend_code).await
             }
+            ClientMessage::AcceptFriendRequest { user_id } => {
+                self.handle_accept_friend_request(user_id).await
+            }
+            ClientMessage::BlockFriendRequest { user_id } => {
+                self.handle_block_friend_request(user_id).await
+            }
+            ClientMessage::RetrieveFriendRequests => self.retrieve_friend_requests().await,
+            ClientMessage::RetrieveFriends => self.retrieve_friends().await,
             ClientMessage::Admin(admin_command) => self.handle_admin_command(admin_command).await,
         };
 
@@ -130,17 +144,17 @@ impl WebsocketConnection {
     }
 
     async fn handle_login_session(&self, id: String, token: Secret) -> ServerResult<()> {
-        let user_id = Uuid::parse_str(&id).map_err(|_| ServerError::InvalidCredentials)?;
+        let user_id = Uuid::parse_str(&id).map_err(|_| ServerError::SessionInvalid)?;
         let session = self
             .state
             .stores
             .user_session
             .find(user_id)
             .await?
-            .ok_or(ServerError::InvalidCredentials)?;
+            .ok_or(ServerError::SessionInvalid)?;
 
         if !verify_secret(&token, &session.token_hash) {
-            return Err(ServerError::InvalidCredentials);
+            return Err(ServerError::SessionInvalid);
         };
         drop(token);
 
@@ -150,7 +164,7 @@ impl WebsocketConnection {
             .user
             .find_by_id(user_id)
             .await?
-            .ok_or(ServerError::InvalidCredentials)?;
+            .ok_or(ServerError::SessionInvalid)?;
         self.state.connections.register_user(self.id, user.id);
         self.send_to_connection(ServerMessage::Authenticated(user.get_me()))
             .await;
@@ -197,77 +211,102 @@ impl WebsocketConnection {
 
     async fn handle_send_friend_request(&self, friend_code: String) -> ServerResult<()> {
         let user = self.verify_logged_in().await?;
-        let friend = self
+        let friendship = self
             .state
-            .stores
-            .user
-            .find_by_friend_code(&friend_code)
-            .await?
-            .ok_or(ServerError::FriendCodeInvalid)?;
-
-        let id_tuple = self
-            .state
-            .stores
-            .user_friendship
-            .id_tuple(user.id, friend.id);
-        let is_1 = id_tuple.0 == user.id;
-
-        if let Some(existing_friendship) = self
-            .state
-            .stores
-            .user_friendship
-            .find_by_user_ids(user.id, friend.id)
-            .await?
-        {
-            return match existing_friendship.status() {
-                FriendshipStatus::RequestedFrom1 => {
-                    if is_1 {
-                        Err(ServerError::FriendRequestAlreadySent)
-                    } else {
-                        self.state
-                            .stores
-                            .user_friendship
-                            .set_status(user.id, friend.id, FriendshipStatus::RequestedFromBoth)
-                            .await?;
-                        self.send_to_connection(ServerMessage::FriendRequestSent)
-                            .await;
-                        Ok(())
-                    }
-                }
-                FriendshipStatus::RequestedFrom2 => {
-                    if is_1 {
-                        self.state
-                            .stores
-                            .user_friendship
-                            .set_status(user.id, friend.id, FriendshipStatus::RequestedFromBoth)
-                            .await?;
-                        self.send_to_connection(ServerMessage::FriendRequestSent)
-                            .await;
-                        Ok(())
-                    } else {
-                        Err(ServerError::FriendRequestAlreadySent)
-                    }
-                }
-                FriendshipStatus::RequestedFromBoth => Err(ServerError::FriendRequestAlreadySent),
-                FriendshipStatus::Accepted => Err(ServerError::FriendRequestAlreadyAccepted),
-                _ => Err(ServerError::FriendRequestBlocked),
-            };
-        }
-
-        let status = if is_1 {
-            FriendshipStatus::RequestedFrom1
-        } else {
-            FriendshipStatus::RequestedFrom2
-        };
-
-        self.state
-            .stores
-            .user_friendship
-            .set_status(user.id, friend.id, status)
+            .services
+            .friendship
+            .send_request(&user, friend_code)
             .await?;
+
         self.send_to_connection(ServerMessage::FriendRequestSent)
             .await;
 
+        let friend_id = friendship.get_other_user_id(&user.id);
+        if self.state.connections.is_online(friend_id) {
+            let info = FriendRequestInfo {
+                user_id: user.id.to_string(),
+                user_name: user.name,
+            };
+            self.send_to_user(friend_id, ServerMessage::FriendRequestReceived(info))
+                .await;
+        }
+
+        Ok(())
+    }
+
+    async fn handle_accept_friend_request(&self, user_id: String) -> ServerResult<()> {
+        let user = self.verify_logged_in().await?;
+        let friendship = self
+            .state
+            .services
+            .friendship
+            .accept_request(&user, user_id)
+            .await?;
+
+        self.send_to_connection(ServerMessage::FriendRequestAccepted)
+            .await;
+
+        let friend_id = friendship.get_other_user_id(&user.id);
+        if self.state.connections.is_online(friend_id) {
+            let info = FriendInfo {
+                user_id: user.id.to_string(),
+                user_name: user.name,
+                timestamp_utc: friendship.created_at.and_utc().timestamp(),
+                is_online: self.state.connections.is_online(user.id),
+            };
+            self.send_to_user(friend_id, ServerMessage::FriendRequestWasAccepted(info))
+                .await;
+        }
+
+        Ok(())
+    }
+
+    async fn handle_block_friend_request(&self, user_id: String) -> ServerResult<()> {
+        let user = self.verify_logged_in().await?;
+        self.state
+            .services
+            .friendship
+            .block_request(&user, user_id)
+            .await?;
+        self.send_to_connection(ServerMessage::FriendRequestBlocked)
+            .await;
+        Ok(())
+    }
+
+    async fn retrieve_friend_requests(&self) -> ServerResult<()> {
+        let user = self.verify_logged_in().await?;
+        let infos = self
+            .state
+            .services
+            .friendship
+            .get_friend_requests(&user)
+            .await?;
+        self.send_to_connection(ServerMessage::FriendRequests(infos))
+            .await;
+        Ok(())
+    }
+
+    async fn retrieve_friends(&self) -> ServerResult<()> {
+        let user = self.verify_logged_in().await?;
+        let infos = self
+            .state
+            .services
+            .friendship
+            .get_friends(&user)
+            .await?
+            .into_iter()
+            .map(|friend_info| {
+                let is_online = Uuid::parse_str(&friend_info.user_id)
+                    .map(|uuid| self.state.connections.is_online(uuid))
+                    .unwrap_or(false);
+
+                FriendInfo {
+                    is_online,
+                    ..friend_info
+                }
+            })
+            .collect();
+        self.send_to_connection(ServerMessage::Friends(infos)).await;
         Ok(())
     }
 

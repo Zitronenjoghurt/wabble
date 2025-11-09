@@ -67,6 +67,10 @@ impl WebsocketClient {
         &self.store
     }
 
+    pub fn store_mut(&mut self) -> &mut store::WsStore {
+        &mut self.store
+    }
+
     pub fn remember_me(&self) -> Option<&RememberMe> {
         self.remember_me.as_ref()
     }
@@ -131,74 +135,76 @@ impl WebsocketClient {
         Ok(())
     }
 
-    pub fn receive(&mut self) -> WebsocketResult<Vec<ServerMessage>> {
+    pub fn update(&mut self) -> WebsocketResult<Vec<ServerMessage>> {
+        self.update_store()?;
+        self.handle_ping_timing()?;
+        self.handle_just_connected()?;
+        self.process_websocket_events()
+    }
+
+    fn update_store(&mut self) -> WebsocketResult<()> {
+        if !self.auth_state.is_authenticated() {
+            return Ok(());
+        }
+
+        if self.store.timer_friendship.is_expired() {
+            self.store.timer_friendship.reset();
+            self.update_friends();
+            self.update_friend_requests();
+        }
+
+        Ok(())
+    }
+
+    pub fn update_friend_requests(&mut self) {
+        let _ = self.send(ClientMessage::RetrieveFriendRequests);
+    }
+
+    pub fn update_friends(&mut self) {
+        let _ = self.send(ClientMessage::RetrieveFriends);
+    }
+
+    fn handle_ping_timing(&mut self) -> WebsocketResult<()> {
         if let Some(last_ping) = self.last_ping {
             if last_ping.elapsed().as_secs() > 10 {
                 self.ping_timer = Some(Instant::now());
                 self.last_ping = Some(Instant::now());
-                let _ = self.send(ClientMessage::Ping);
+                self.send(ClientMessage::Ping)?;
             }
         } else {
             self.last_ping = Some(Instant::now());
         }
+        Ok(())
+    }
 
+    fn handle_just_connected(&mut self) -> WebsocketResult<()> {
         if self.just_connected {
             self.just_connected = false;
             if let Some(remember_me) = &self.remember_me {
-                self.send(ClientMessage::LoginSession {
-                    id: remember_me.id.to_string(),
-                    token: Secret::new(remember_me.token.to_string()),
-                })?;
+                let id = remember_me.id.to_string();
+                let token = Secret::new(remember_me.token.to_string());
+                self.send(ClientMessage::LoginSession { id, token })?;
             }
         }
+        Ok(())
+    }
 
+    fn process_websocket_events(&mut self) -> WebsocketResult<Vec<ServerMessage>> {
         let Some(receiver) = &mut self.receiver else {
             return Err(WebsocketError::NotConnected);
         };
 
         let mut messages = Vec::new();
-        while let Some(event) = receiver.try_recv() {
+
+        let events: Vec<WsEvent> = std::iter::from_fn(|| receiver.try_recv()).collect();
+        for event in events {
             match event {
                 WsEvent::Opened => {
-                    self.is_connected = true;
-                    self.just_connected = true;
+                    self.handle_connection_opened();
                 }
                 WsEvent::Message(WsMessage::Binary(data)) => {
-                    let (message, _) =
-                        bincode::decode_from_slice(&data, bincode::config::standard())?;
-
-                    match &message {
-                        ServerMessage::Pong => {
-                            if let Some(ping_timer) = self.ping_timer.take() {
-                                self.ping = Some(ping_timer.elapsed());
-                            }
-                        }
-                        ServerMessage::Authenticated(me) => {
-                            self.auth_state.set_authenticated(me.clone());
-                        }
-                        ServerMessage::Error(ServerError::InvalidCredentials) => {
-                            self.auth_state.clear();
-                            self.remember_me = None;
-                        }
-                        ServerMessage::Error(ServerError::Unauthorized) => {
-                            self.clear_connection();
-                            return Err(WebsocketError::NotConnected);
-                        }
-                        ServerMessage::Admin(ServerAdminMessage::InviteCodes(codes)) => {
-                            self.store.invite_codes = codes.clone();
-                        }
-                        ServerMessage::SessionToken { id, token } => {
-                            if let Some(server_url) = self.url.as_ref() {
-                                self.remember_me = Some(RememberMe {
-                                    url: server_url.clone(),
-                                    id: id.to_string(),
-                                    token: token.reveal_str().to_string(),
-                                });
-                            }
-                        }
-                        _ => {}
-                    }
-
+                    let message = self.decode_message(data)?;
+                    self.handle_server_message(&message);
                     messages.push(message);
                 }
                 WsEvent::Error(err) => {
@@ -214,6 +220,63 @@ impl WebsocketClient {
         }
 
         Ok(messages)
+    }
+
+    fn handle_connection_opened(&mut self) {
+        self.is_connected = true;
+        self.just_connected = true;
+    }
+
+    fn decode_message(&self, data: Vec<u8>) -> WebsocketResult<ServerMessage> {
+        let (message, _) = bincode::decode_from_slice(&data, bincode::config::standard())?;
+        Ok(message)
+    }
+
+    fn handle_server_message(&mut self, message: &ServerMessage) {
+        match message {
+            ServerMessage::Pong => {
+                if let Some(ping_timer) = self.ping_timer.take() {
+                    self.ping = Some(ping_timer.elapsed());
+                }
+            }
+            ServerMessage::Authenticated(me) => {
+                self.auth_state.set_authenticated(me.clone());
+            }
+            ServerMessage::Error(ServerError::SessionInvalid) => {
+                self.handle_session_invalid();
+            }
+            ServerMessage::Error(ServerError::Unauthorized) => {
+                self.clear_connection();
+            }
+            ServerMessage::Admin(ServerAdminMessage::InviteCodes(codes)) => {
+                self.store.invite_codes = codes.clone();
+            }
+            ServerMessage::SessionToken { id, token } => {
+                self.handle_session_token(id, token);
+            }
+            ServerMessage::FriendRequests(requests) => {
+                self.store.friend_requests = requests.clone();
+            }
+            ServerMessage::Friends(requests) => {
+                self.store.friends = requests.clone();
+            }
+            _ => {}
+        }
+    }
+
+    fn handle_session_invalid(&mut self) {
+        self.auth_state.clear();
+        self.remember_me = None;
+    }
+
+    fn handle_session_token(&mut self, id: &str, token: &Secret) {
+        if let Some(server_url) = self.url.as_ref() {
+            self.remember_me = Some(RememberMe {
+                url: server_url.clone(),
+                id: id.to_string(),
+                token: token.reveal_str().to_string(),
+            });
+        }
     }
 }
 

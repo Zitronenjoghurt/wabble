@@ -61,7 +61,7 @@ impl AppWindow for SendFriendRequestWindow<'_> {
 }
 
 impl ToggleableWindow for SendFriendRequestWindow<'_> {
-    fn toggle_label(&self) -> &'static str {
-        regular::USER_PLUS
+    fn toggle_label(&self) -> String {
+        regular::USER_PLUS.to_string()
     }
 }

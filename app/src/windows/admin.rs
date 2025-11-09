@@ -95,7 +95,7 @@ impl AppWindow for AdminWindow<'_> {
 }
 
 impl ToggleableWindow for AdminWindow<'_> {
-    fn toggle_label(&self) -> &'static str {
-        regular::SHIELD
+    fn toggle_label(&self) -> String {
+        regular::SHIELD.to_string()
     }
 }
