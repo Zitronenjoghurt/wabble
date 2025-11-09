@@ -3,9 +3,7 @@ services:
     image: postgres:17
     restart: unless-stopped
     env_file:
-      - .ws.env
-    ports:
-      - "5432:5432"
+      - .env
     volumes:
       - wabble_db_data:/var/lib/postgresql/data
     healthcheck:
@@ -14,15 +12,13 @@ services:
       timeout: 5s
       retries: 5
 
-  server:
-    image: wabble-server-ws-only:latest
+  wabble:
+    image: wabble-server:latest
     build:
       context: ..
-      dockerfile: docker/Dockerfile.ws
+      dockerfile: docker/Dockerfile
     env_file:
-      - .ws.env
-    ports:
-      - "48967:48967"
+      - .env
     restart: unless-stopped
     depends_on:
       db:
@@ -30,3 +26,7 @@ services:
 
 volumes:
   wabble_db_data:
+
+networks:
+  proxy:
+    external: true

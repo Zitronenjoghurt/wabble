@@ -1,4 +1,4 @@
-.PHONY: data up down build logs ws-up ws-down ws-build ws-logs db-up db-down
+.PHONY: data up down build logs prod-up prod-down prod-build prod-logs ws-up ws-down ws-build ws-logs db-up db-down
 
 data:
 	cargo run --release --package wabble-data --bin generate --features="parse"
@@ -14,6 +14,18 @@ build:
 
 logs:
 	docker compose -f docker/docker-compose.yml logs -f
+
+prod-up:
+	docker compose -f docker/docker-compose.prod.yml up -d
+
+prod-down:
+	docker compose -f docker/docker-compose.prod.yml down
+
+prod-build:
+	docker compose -f docker/docker-compose.prod.yml build
+
+prod-logs:
+	docker compose -f docker/docker-compose.prod.yml logs -f
 
 ws-up:
 	docker compose -f docker/docker-compose.ws.yml up -d
