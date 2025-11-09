@@ -11,6 +11,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - default
 
   wabble:
     image: wabble-server:latest
@@ -24,6 +26,7 @@ services:
       db:
         condition: service_healthy
     networks:
+      - default
       - proxy
 
 volumes:
