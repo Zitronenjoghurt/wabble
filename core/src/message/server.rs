@@ -14,6 +14,7 @@ pub enum ServerMessage {
     FriendRequestSent,
     FriendRequestAccepted,
     FriendRequestBlocked,
+    FriendRemoved,
     FriendRequestReceived(FriendRequestInfo),
     FriendRequestWasAccepted(FriendInfo),
     FriendRequests(Vec<FriendRequestInfo>),
@@ -42,6 +43,8 @@ pub enum ServerError {
     FriendRequestBlocked,
     #[error("No friend request")]
     NoFriendRequest,
+    #[error("Not friends")]
+    NotFriends,
     #[error("Session invalid")]
     SessionInvalid,
     #[error("Unauthorized")]

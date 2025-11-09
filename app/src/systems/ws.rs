@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use wabble_core::crypto::secret::Secret;
 use wabble_core::message::client::ClientMessage;
 use wabble_core::message::server::{ServerAdminMessage, ServerError, ServerMessage};
+use wabble_core::types::friend_info::FriendInfo;
 use web_time::{Duration, Instant};
 
 mod auth_state;
@@ -257,8 +258,8 @@ impl WebsocketClient {
             ServerMessage::FriendRequests(requests) => {
                 self.store.friend_requests = requests.clone();
             }
-            ServerMessage::Friends(requests) => {
-                self.store.friends = requests.clone();
+            ServerMessage::Friends(friends) => {
+                self.handle_friends(friends);
             }
             _ => {}
         }
@@ -276,6 +277,15 @@ impl WebsocketClient {
                 id: id.to_string(),
                 token: token.reveal_str().to_string(),
             });
+        }
+    }
+
+    fn handle_friends(&mut self, friends: &[FriendInfo]) {
+        self.store.friends.clear();
+        for friend in friends {
+            self.store
+                .friends
+                .insert(friend.user_id.clone(), friend.clone());
         }
     }
 }

@@ -27,6 +27,9 @@ pub enum ClientMessage {
     BlockFriendRequest {
         user_id: String,
     },
+    RemoveFriend {
+        user_id: String,
+    },
     RetrieveFriendRequests,
     RetrieveFriends,
     Admin(ClientAdminCommand),

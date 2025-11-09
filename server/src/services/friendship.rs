@@ -269,4 +269,20 @@ impl FriendshipService {
 
         Ok(infos)
     }
+
+    pub async fn remove_friend(&self, user: &user::Model, friend_id: String) -> ServerResult<()> {
+        let friend_uuid = Uuid::parse_str(&friend_id).map_err(|_| ServerError::NotFriends)?;
+        let friendship = self
+            .stores
+            .user_friendship
+            .find_by_user_ids(user.id, friend_uuid)
+            .await?
+            .ok_or(ServerError::NotFriends)?;
+
+        if friendship.status() != FriendshipStatus::Accepted {
+            return Err(ServerError::NotFriends);
+        };
+
+        Ok(self.stores.user_friendship.remove(friendship).await?)
+    }
 }

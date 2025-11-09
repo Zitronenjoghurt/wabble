@@ -12,7 +12,6 @@ use wabble_core::message::client::{ClientAdminCommand, ClientMessage};
 use wabble_core::message::server::{ServerAdminMessage, ServerError, ServerMessage, ServerResult};
 use wabble_core::types::friend_info::FriendInfo;
 use wabble_core::types::friend_request_info::FriendRequestInfo;
-use wabble_core::types::friendship_status::FriendshipStatus;
 use wabble_core::types::user_permissions::UserPermissions;
 
 pub struct WebsocketConnection {
@@ -103,6 +102,7 @@ impl WebsocketConnection {
             }
             ClientMessage::RetrieveFriendRequests => self.retrieve_friend_requests().await,
             ClientMessage::RetrieveFriends => self.retrieve_friends().await,
+            ClientMessage::RemoveFriend { user_id } => self.handle_remove_friend(user_id).await,
             ClientMessage::Admin(admin_command) => self.handle_admin_command(admin_command).await,
         };
 
@@ -251,7 +251,11 @@ impl WebsocketConnection {
             let info = FriendInfo {
                 user_id: user.id.to_string(),
                 user_name: user.name,
-                timestamp_utc: friendship.created_at.and_utc().timestamp(),
+                timestamp_utc: friendship
+                    .accepted_at
+                    .unwrap_or_default()
+                    .and_utc()
+                    .timestamp(),
                 is_online: self.state.connections.is_online(user.id),
             };
             self.send_to_user(friend_id, ServerMessage::FriendRequestWasAccepted(info))
@@ -307,6 +311,19 @@ impl WebsocketConnection {
             })
             .collect();
         self.send_to_connection(ServerMessage::Friends(infos)).await;
+        Ok(())
+    }
+
+    async fn handle_remove_friend(&self, friend_id: String) -> ServerResult<()> {
+        let user = self.verify_logged_in().await?;
+        self.state
+            .services
+            .friendship
+            .remove_friend(&user, friend_id)
+            .await?;
+
+        self.send_to_connection(ServerMessage::FriendRemoved).await;
+
         Ok(())
     }
 

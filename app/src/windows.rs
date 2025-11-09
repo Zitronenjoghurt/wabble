@@ -3,6 +3,7 @@ use egui::{Context, Id, Ui, Widget, WidgetText};
 
 pub mod admin;
 pub mod connection;
+pub mod friend_info;
 pub mod friend_requests;
 pub mod profile;
 pub mod send_friend_request;

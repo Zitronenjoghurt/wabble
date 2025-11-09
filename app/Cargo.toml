@@ -11,6 +11,7 @@ targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
 wabble-core = { workspace = true }
 anyhow = { workspace = true }
 bincode = { workspace = true }
+chrono = "0.4.42"
 eframe = { version = "0.33.0", default-features = false, features = ["glow", "persistence", "wayland", "x11"] }
 egui = "0.33.0"
 egui-notify = "0.21.0"

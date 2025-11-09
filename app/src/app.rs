@@ -57,6 +57,12 @@ impl WabbleApp {
         self.views = views;
     }
 
+    fn update_windows(&mut self, ctx: &Context) {
+        let mut windows = std::mem::take(&mut self.windows);
+        windows.update(self, ctx);
+        self.windows = windows;
+    }
+
     fn update_ws(&mut self) {
         match self.ws.update() {
             Ok(messages) => {
@@ -108,6 +114,10 @@ impl WabbleApp {
                 self.toasts
                     .info(format!("Friend request received from {}", info.user_name));
             }
+            ServerMessage::FriendRemoved => {
+                self.ws.update_friends();
+                self.toasts.success("Friend removed");
+            }
             _ => {}
         }
     }
@@ -116,6 +126,7 @@ impl WabbleApp {
 impl eframe::App for WabbleApp {
     fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
         self.update_views(ctx);
+        self.update_windows(ctx);
         self.update_ws();
         self.toasts.update(ctx);
     }

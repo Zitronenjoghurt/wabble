@@ -75,7 +75,7 @@ impl MainView {
 
         ui.separator();
 
-        FriendList::new(&app.ws.store().friends).ui(ui);
+        FriendList::new(&app.ws.store().friends, &mut app.windows.friend_info_window).ui(ui);
     }
 }
 

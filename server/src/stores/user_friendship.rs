@@ -96,14 +96,27 @@ impl UserFriendshipStore {
         let friendship =
             if let Some(existing_friendship) = self.find_by_user_ids(user_1_id, user_2_id).await? {
                 let mut active_model = existing_friendship.into_active_model();
+
                 active_model.status = Set(status.into());
+                if status == FriendshipStatus::Accepted {
+                    active_model.accepted_at = Set(Some(chrono::Utc::now().naive_utc()));
+                }
+
                 active_model.update(self.db.conn()).await?
             } else {
                 let id_tuple = self.id_tuple(user_1_id, user_2_id);
+
+                let accepted_at = if status == FriendshipStatus::Accepted {
+                    Some(chrono::Utc::now().naive_utc())
+                } else {
+                    None
+                };
+
                 let new_friendship = user_friendship::ActiveModel {
                     user1_id: Set(id_tuple.0),
                     user2_id: Set(id_tuple.1),
                     status: Set(status.into()),
+                    accepted_at: Set(accepted_at),
                     ..Default::default()
                 };
                 new_friendship.insert(self.db.conn()).await?
@@ -112,10 +125,7 @@ impl UserFriendshipStore {
         Ok(friendship)
     }
 
-    pub async fn remove(&self, user_1_id: Uuid, user_2_id: Uuid) -> StoreResult<()> {
-        let Some(friendship) = self.find_by_user_ids(user_1_id, user_2_id).await? else {
-            return Ok(());
-        };
+    pub async fn remove(&self, friendship: user_friendship::Model) -> StoreResult<()> {
         friendship.delete(self.db.conn()).await?;
         Ok(())
     }
