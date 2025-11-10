@@ -28,17 +28,16 @@ impl Widget for FriendList<'_> {
         } else {
             ScrollArea::vertical()
                 .show(ui, |ui| {
-                    ui.vertical(|ui| {
-                        Grid::new("friend_list_grid")
-                            .num_columns(1)
-                            .striped(true)
-                            .show(ui, |ui| {
-                                for friend in self.list.values() {
-                                    FriendWidget::new(friend, self.friend_info_window).ui(ui);
-                                }
-                            })
-                    })
-                    .response
+                    Grid::new("friend_list_grid")
+                        .num_columns(1)
+                        .striped(true)
+                        .show(ui, |ui| {
+                            for friend in self.list.values() {
+                                FriendWidget::new(friend, self.friend_info_window).ui(ui);
+                                ui.end_row();
+                            }
+                        })
+                        .response
                 })
                 .inner
         }

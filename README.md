@@ -10,3 +10,7 @@ A web-assembly based Scrabble game powered by Rust+egui.
     - English: https://kaikki.org/dictionary/English/
     - German: https://kaikki.org/dewiktionary/Deutsch/index.html
 - Phenomenal eframe/egui WASM template: https://github.com/emilk/eframe_template
+
+# Known issues
+
+- TLS does not work for native yet
