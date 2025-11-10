@@ -1,5 +1,28 @@
+use wabble_core::game::board::board_move::{BoardMove, BoardMovePart};
+use wabble_core::game::board::coordinates::BoardCoords;
+use wabble_core::game::board::tile::Tile;
+use wabble_core::game::board::Board;
+
 #[cfg(not(target_arch = "wasm32"))]
 fn main() -> eframe::Result {
+    let mut board = Board::new(15).unwrap();
+    println!("{}", board.display_bonuses().unwrap());
+
+    let p1 = BoardCoords::from_x_y(0, 0, board.size()).unwrap();
+    let p2 = BoardCoords::from_x_y(1, 0, board.size()).unwrap();
+    let p3 = BoardCoords::from_x_y(1, 1, board.size()).unwrap();
+    board.get_cell_mut(&p1).unwrap().tile = Tile::A;
+    board.get_cell_mut(&p2).unwrap().tile = Tile::A;
+    board.get_cell_mut(&p3).unwrap().tile = Tile::A;
+
+    let m1 = BoardCoords::from_x_y(0, 1, board.size()).unwrap();
+    let m2 = BoardCoords::from_x_y(1, 1, board.size()).unwrap();
+    let move_part1 = BoardMovePart::new(m1, Tile::A);
+    let move_part2 = BoardMovePart::new(m2, Tile::A);
+    let board_move = BoardMove::new(vec![move_part1, move_part2]);
+
+    board.evaluate(&board_move).unwrap();
+
     let native_options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_inner_size([400.0, 300.0])

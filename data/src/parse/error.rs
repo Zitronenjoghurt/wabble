@@ -1,4 +1,4 @@
-use wabble_core::language::Language;
+use wabble_core::types::language::Language;
 
 pub type ParseResult<T> = Result<T, ParseError>;
 

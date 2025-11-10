@@ -1,6 +1,6 @@
 use bincode::{Decode, Encode};
 use std::collections::HashMap;
-use wabble_core::language::Language;
+use wabble_core::types::language::Language;
 
 #[cfg(feature = "parse")]
 pub mod parse;

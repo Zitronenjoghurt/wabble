@@ -2,7 +2,7 @@ use crate::parse::dictionary::parse_dictionary;
 use crate::parse::error::ParseResult;
 use crate::WabbleData;
 use std::path::Path;
-use wabble_core::language::Language;
+use wabble_core::types::language::Language;
 
 pub mod dictionary;
 pub mod error;

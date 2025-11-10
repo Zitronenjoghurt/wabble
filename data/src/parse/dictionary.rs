@@ -6,7 +6,7 @@ use regex::Regex;
 use std::collections::HashSet;
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
-use wabble_core::language::Language;
+use wabble_core::types::language::Language;
 
 pub fn parse_dictionary(resources: &Path, language: Language) -> ParseResult<WabbleDictionary> {
     let word_whitelist = word_whitelist(resources, language)?;
